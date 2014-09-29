@@ -111,7 +111,6 @@ void RunCmdFork(commandT* cmd, bool fork)
   if (cmd->argc<=0)
     return;
   printf("argv[0]: %s \n", cmd->argv[0]);
-  // no built in functions
   if (IsBuiltIn(cmd->argv[0]))
   {
   	printf("running build in cmd.\n");
@@ -145,9 +144,7 @@ void RunCmdRedirIn(commandT* cmd, char* file)
 /*Try to run an external command*/
 static void RunExternalCmd(commandT* cmd, bool fork)
 {
-  // if the cmd can be located in path
   if (ResolveExternalCmd(cmd)){
-  	printf("exec.\n");
     Exec(cmd, fork);
   }
   else {

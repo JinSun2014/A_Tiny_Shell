@@ -136,7 +136,7 @@ void parser_single(char *c, int sz, commandT** cd, int bg)
 /*Parse the whole command line and split commands if a piped command is sent.*/
 void Interpret(char* cmdLine)
 {
-	printf("interpret: %s \n", cmdLine);
+	printf("interpret: %s", cmdLine);
   int task = 1;
   int bg = 0, i,k,j = 0, quotation1 = 0, quotation2 = 0;
   commandT **command;
