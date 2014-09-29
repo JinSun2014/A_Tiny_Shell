@@ -49,7 +49,7 @@
  */
 
 #define BUFSIZE 80
-#define MAXPATH 80
+
 /************Global Variables*********************************************/
 
 /************Function Prototypes******************************************/
@@ -71,9 +71,10 @@ int main (int argc, char *argv[])
 
   while (!forceExit) /* repeat forever */
   {
-	printPrompt();
     /* read command line */
-    getCommandLine(&cmdLine, BUFSIZE);;
+    getCommandLine(&cmdLine, BUFSIZE);
+    
+    printPrompt();
 
 	// strcmp: string compare
     if(strcmp(cmdLine, "exit") == 0)
@@ -100,12 +101,3 @@ static void sig(int signo)
 {
 }
 
-void printPrompt()
-{
-	// get current directory path
-	char buffer[MAXPATH];
-	char result[MAXPATH];
-	getcwd(buffer, MAXPATH);
-	//substr(result, buffer, 13, strlen(buffer));
-	printf("~%s$ ", buffer);	
-}
