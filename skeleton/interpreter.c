@@ -199,6 +199,15 @@ void Interpret(char* cmdLine)
   }
   parser_single(&(cmdLine[i-j]), j, &(command[task]),bg);
 
+  printf("Your command is: ");
+  int curser = 0;
+  char** cmds = command[0]->argv;
+  for (curser = 0; curser < command[0]->argc; ++curser){
+      printf("%s ", cmds[curser]);
+  }
+  printf("\n");
+
+
   RunCmd(command, task+1);
   free(command);
 }
