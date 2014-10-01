@@ -73,7 +73,8 @@ int main (int argc, char *argv[])
   {
 	printPrompt();
     /* read command line */
-    getCommandLine(&cmdLine, BUFSIZE);;
+    getCommandLine(&cmdLine, BUFSIZE);
+	printf("cmdLine: %s", cmdLine);
 
 	// strcmp: string compare
     if(strcmp(cmdLine, "exit") == 0)

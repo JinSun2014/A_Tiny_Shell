@@ -176,6 +176,7 @@ static bool ResolveExternalCmd(commandT* cmd)
     return FALSE;
   }
   pathlist = getenv("PATH");
+  printf("path: %s \n", pathlist);
   if(pathlist == NULL) return FALSE;
   i = 0;
   while(i<strlen(pathlist)){
