@@ -57,6 +57,7 @@
 /************Function Prototypes******************************************/
 /* handles SIGINT and SIGSTOP signals */	
 static void sig(int);
+void printPrompt();
 
 /************External Declaration*****************************************/
 
@@ -106,8 +107,7 @@ void printPrompt()
 {
 	// get current directory path
 	char buffer[MAXPATH];
-	char result[MAXPATH];
-	getcwd(buffer, MAXPATH);
+	char* result = getcwd(buffer, MAXPATH);
 	//substr(result, buffer, 13, strlen(buffer));
-	printf("~%s$ ", buffer);	
+	printf("%s$> ", result);
 }
