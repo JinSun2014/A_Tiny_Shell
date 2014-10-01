@@ -31,9 +31,11 @@
 #define __MYSS_IMPL__
 
 /************System include***********************************************/
+#include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
 #include <string.h>
+#include <unistd.h>
 
 /************Private include**********************************************/
 #include "tsh.h"
