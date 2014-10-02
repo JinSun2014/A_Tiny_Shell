@@ -208,6 +208,11 @@ static bool ResolveExternalCmd(commandT* cmd)
 static void Exec(commandT* cmd, bool forceFork)
 {
 	//printf("cmd[0]->argv %s \n" + cmd[0]->argv);
+	printf("name: %s \n", cmd->name);
+	printf("cmdline: %s \n", cmd->cmdline);
+	printf("redirect_in: %s , redirect_out: %s \n", cmd->redirect_in, cmd->redirect_out);
+	printf("bg: %i  ", cmd->bg);
+	printf("argc: %i \n ", cmd->argc);
 	pid_t fpid = fork();
 	int * status;
 	if (fpid < 0)
@@ -216,24 +221,73 @@ static void Exec(commandT* cmd, bool forceFork)
 	}
 	else if (fpid == 0)
 	{
-		printf("fpid == 0 \n");
 		execv(cmd->name, cmd->argv);
 	}
-	else{
-		waitpid(fpid, &status, 0);
+	else
+	{
+		if (cmd->bg == 0)
+			waitpid(fpid, &status, 0);
 	}
 
 }
 
 static bool IsBuiltIn(char* cmd)
 {
-  return FALSE;     
+	if ((strcmp(cmd, "cd") == 0) || strcmp(cmd, "bg") == 0 || strcmp(cmd, "fg") == 0 || strcmp(cmd, "jobs") == 0)
+	{
+		printf("build in function. \n");
+		return TRUE;
+	}
+	else
+	{
+		printf("not build in function. \n");
+		return FALSE;
+	}
 }
 
 
 static void RunBuiltInCmd(commandT* cmd)
 {
-}
+	char* cmd_first = cmd->argv[0];
+	// cd command
+	if (strcmp(cmd_first, "cd") == 0)
+	{
+		printf("the command is cd. \n");
+		int cd_result;
+		char* homeDirectory = "/home/";
+		if (cmd->argc == 1)
+		{
+			cd_result = chdir(homeDirectory);
+		}
+		else
+		{
+			printf("cd argv1: %s \n", cmd->argv[1]);
+			cd_result = chdir(cmd->argv[1]);
+		}
+		if (cd_result < 0)
+		{
+			printf("error in cd.\n");
+		}
+	}	
+	
+	// fg command
+	if (strcmp(cmd_first, "fg") == 0)
+	{
+		printf("the command is fg. \n");
+	}
+
+	// bg command
+	if (strcmp(cmd_first, "bg") == 0)
+	{
+		printf("the command is bg. \n");
+	}
+
+	// jobs command
+	if (strcmp(cmd_first, "jobs") == 0)
+	{
+		printf("the command is jobs. \n");
+	}
+}		
 
 void CheckJobs()
 {
