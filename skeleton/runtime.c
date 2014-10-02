@@ -204,8 +204,25 @@ static bool ResolveExternalCmd(commandT* cmd)
   return FALSE; /*The command is not found or the user don't have enough priority to run.*/
 }
 
+// fg wait; bg not wait
 static void Exec(commandT* cmd, bool forceFork)
 {
+	//printf("cmd[0]->argv %s \n" + cmd[0]->argv);
+	pid_t fpid = fork();
+	int * status;
+	if (fpid < 0)
+	{
+		printf("fpid < 0 \n ");
+	}
+	else if (fpid == 0)
+	{
+		printf("fpid == 0 \n");
+		execv(cmd->name, cmd->argv);
+	}
+	else{
+		waitpid(fpid, &status, 0);
+	}
+
 }
 
 static bool IsBuiltIn(char* cmd)
