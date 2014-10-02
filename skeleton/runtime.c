@@ -209,6 +209,9 @@ static void Exec(commandT* cmd, bool forceFork)
 {
 	//printf("cmd[0]->argv %s \n" + cmd[0]->argv);
 	pid_t fpid = fork();
+	printf("name: %s \n", cmd->name);
+	printf("cmdline: %s \n", cmd->cmdline);
+	printf("bg: %i \n", cmd->bg);
 	int * status;
 	if (fpid < 0)
 	{
