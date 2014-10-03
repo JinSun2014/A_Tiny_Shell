@@ -65,6 +65,7 @@
 #define NBUILTINCOMMANDS (sizeof BuiltInCommands / sizeof(char*))
 
 typedef struct bgjob_l {
+  char* cmd_first;
   pid_t pid;
   struct bgjob_l* next;
 } bgjobL;
@@ -204,31 +205,107 @@ static bool ResolveExternalCmd(commandT* cmd)
   return FALSE; /*The command is not found or the user don't have enough priority to run.*/
 }
 
+void AddBgJob(bgjobL* job)
+{
+	printf("adding bg job to the list. \n ");
+	if (bgjobs == NULL)
+	{
+		bgjobs = malloc(sizeof(bgjobL));
+		bgjobs->next = job;
+	}
+	else
+	{
+		job->next = bgjobs->next;
+		bgjobs->next = job;
+	}
+}
+
+void printBgJobList()
+{
+	printf("printing bg jobs. \n");
+	if (bgjobs == NULL || bgjobs->next == NULL)
+		printf("no bg jobs in the list. \n");
+	else
+	{
+		bgjobL* cursor = bgjobs->next;
+		while (cursor != NULL)
+		{
+			//printf("bgjob pid: %s   ",cursor->pid);
+			printf("bgjob cmd_first: %s   ", cursor->cmd_first);
+			cursor = cursor->next;
+		}
+	}	
+}
+
 // fg wait; bg not wait
 static void Exec(commandT* cmd, bool forceFork)
 {
+	if (forceFork)
+	{
+
 	//printf("cmd[0]->argv %s \n" + cmd[0]->argv);
 	printf("name: %s \n", cmd->name);
 	printf("cmdline: %s \n", cmd->cmdline);
 	printf("redirect_in: %s , redirect_out: %s \n", cmd->redirect_in, cmd->redirect_out);
 	printf("bg: %i  ", cmd->bg);
 	printf("argc: %i \n ", cmd->argc);
-	pid_t fpid = fork();
+//	pid_t ppid = getpid();
+//	printf("ppid: %d \n" + ppid);
+	pid_t fpid;
 	int * status;
-	if (fpid < 0)
+	if ((fpid = fork()) < 0)
 	{
 		printf("fpid < 0 \n ");
+		return;
 	}
 	else if (fpid == 0)
 	{
+		//printf("i am child: %d \n" + getpid());
+		//setpgid(0, 0);
+		printf("i am child. \n");
+		if (fpid == NULL)
+		{
+			printf("child. fpid == NULL \n");
+		}
 		execv(cmd->name, cmd->argv);
+		exit(0);
 	}
 	else
 	{
+		printf("i am parent. \n");
+		//printf("fpid: %d \n" + fpid);
+		if (fpid == NULL)
+		{
+			printf("parent fpid == NULL \n");
+		}
+		else
+		{
+			printf("here \n");
+			//printf("fpid: %d \n" + getpid());
+		}
+		// fg job
 		if (cmd->bg == 0)
+		{
+			printf("this is not bg job.\n");
+			//printf("fpid: %s \n" + fpid);
 			waitpid(fpid, &status, 0);
+		}
+		else // bg job
+		{
+			printf("this is bg job. \n");
+			bgjobL* bgJob = (bgjobL*) malloc(sizeof(bgjobL));
+			printf("new node.\n");
+			bgJob->pid = 99999;
+			bgJob->cmd_first = cmd->argv[0];
+			//printf("bg job pid: %d \n" + bgJob->pid);
+			bgJob->next = NULL;
+			AddBgJob(bgJob);
+			printBgJobList();
+			return;
+		}
 	}
-
+	}
+	//printBgJobList();
 }
 
 static bool IsBuiltIn(char* cmd)

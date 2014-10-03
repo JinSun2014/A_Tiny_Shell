@@ -57,6 +57,7 @@
 /************Function Prototypes******************************************/
 /* handles SIGINT and SIGSTOP signals */	
 static void sig(int);
+static void sigHandler(int);
 void printPrompt();
 
 /************External Declaration*****************************************/
@@ -102,6 +103,12 @@ int main (int argc, char *argv[])
 
 static void sig(int signo)
 {
+}
+
+// used to handler terminated process in background
+static void sigHandler(int signo)
+{
+
 }
 
 void printPrompt()
