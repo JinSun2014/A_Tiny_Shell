@@ -206,11 +206,19 @@ void AddBgJob(bgjobL* job)
 	{
 		bgjobs = malloc(sizeof(bgjobL));
 		bgjobs->next = job;
+		job->jobId = 1;
 	}
 	else
 	{
-		job->next = bgjobs->next;
-		bgjobs->next = job;
+		int jobsCount = 0;
+		bgjobL* cursor = bgjobs;
+		while (cursor->next)
+		{
+			cursor = cursor->next;
+			jobsCount++;
+		}
+		job->jobId = jobsCount + 1;
+		cursor->next = job;
 	}
 }
 
@@ -292,7 +300,7 @@ static void Exec(commandT* cmd, bool forceFork)
 			bgjobL* bgJob = (bgjobL*) malloc(sizeof(bgjobL));
 			bgJob->pid = pid;
 			bgJob->status = RUNNING;
-			bgJob->cmd_first = cmd->argv[0];
+			bgJob->cmd_first = cmd->cmdline;
 			printf("bg job pid: %d \n", bgJob->pid);
 			bgJob->next = NULL;
 			AddBgJob(bgJob);
@@ -375,13 +383,17 @@ void CheckJobs()
 	{
 		if (cursor->status == DONE)
 		{
-			printf("[%d]   %s              %s \n", cursor->jobId, "DONE", cursor->cmd_first);
+			printf("[%d]  + %s              %s \n", cursor->jobId, "DONE", cursor->cmd_first);
 			previous->next = cursor->next;
 			free(cursor->cmd_first);
 			free(cursor);
+			cursor = previous->next;
 		}
-		cursor = previous->next;
-		previous = previous->next;
+		else
+		{
+			cursor = cursor->next;
+			previous = previous->next;
+		}
 	}
 }
 
