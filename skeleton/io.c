@@ -111,13 +111,13 @@ void getCommandLine(char** buf, int size)
     cmd[used] = '\0';
   }
   isReading = FALSE;
-  printf("getCommandLine: "); 
-  int i;
-  for (i = 0; i < used; i++)
-  {
-	printf(" i: %d " + i);
-	printf(" %s " + cmd[i]);
-  }
-  printf("\n");
+  //printf("getCommandLine: "); 
+  //int i;
+  //for (i = 0; i < used; i++)
+  //{
+	//printf(" i: %d " + i);
+	//printf(" %s " + cmd[i]);
+  //}
+  //printf("\n");
 }
 

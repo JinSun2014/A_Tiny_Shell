@@ -64,15 +64,9 @@
 
 #define NBUILTINCOMMANDS (sizeof BuiltInCommands / sizeof(char*))
 
-typedef struct bgjob_l {
-  char* cmd_first;
-  pid_t pid;
-  struct bgjob_l* next;
-} bgjobL;
-
 /* the pids of the background processes */
 bgjobL *bgjobs = NULL;
-
+int fgChild;
 /************Function Prototypes******************************************/
 /* run command */
 static void RunCmdFork(commandT*, bool);
@@ -111,7 +105,7 @@ void RunCmdFork(commandT* cmd, bool fork)
 {
   if (cmd->argc<=0)
     return;
-  printf("argv[0]: %s \n", cmd->argv[0]);
+  //printf("argv[0]: %s \n", cmd->argv[0]);
   // no built in functions
   if (IsBuiltIn(cmd->argv[0]))
   {
@@ -148,7 +142,7 @@ static void RunExternalCmd(commandT* cmd, bool fork)
 {
   // if the cmd can be located in path
   if (ResolveExternalCmd(cmd)){
-  	printf("exec.\n");
+  	//printf("exec.\n");
     Exec(cmd, fork);
   }
   else {
@@ -177,7 +171,7 @@ static bool ResolveExternalCmd(commandT* cmd)
     return FALSE;
   }
   pathlist = getenv("PATH");
-  printf("path: %s \n", pathlist);
+  //printf("path: %s \n", pathlist);
   if(pathlist == NULL) return FALSE;
   i = 0;
   while(i<strlen(pathlist)){
@@ -207,7 +201,7 @@ static bool ResolveExternalCmd(commandT* cmd)
 
 void AddBgJob(bgjobL* job)
 {
-	printf("adding bg job to the list. \n ");
+//	printf("adding bg job to the list. \n ");
 	if (bgjobs == NULL)
 	{
 		bgjobs = malloc(sizeof(bgjobL));
@@ -231,6 +225,18 @@ void printBgJobList()
 		while (cursor != NULL)
 		{
 			//printf("bgjob pid: %s   ",cursor->pid);
+			if (cursor->status == RUNNING)
+			{
+				printf("[%d]   %s              %s &\n", cursor->jobId, "RUNNING", cursor->cmd_first);
+			}
+			else if (cursor->status == STOPPED)
+			{
+				printf("[%d]   %s              %s \n", cursor->jobId, "STOPPED", cursor->cmd_first);
+			}
+			else if (cursor->status == DONE)
+			{
+				printf("[%d]   %s              %s \n", cursor->jobId, "DONE", cursor->cmd_first);
+			}
 			printf("bgjob cmd_first: %s   ", cursor->cmd_first);
 			cursor = cursor->next;
 		}
@@ -244,63 +250,53 @@ static void Exec(commandT* cmd, bool forceFork)
 	{
 
 	//printf("cmd[0]->argv %s \n" + cmd[0]->argv);
-	printf("name: %s \n", cmd->name);
-	printf("cmdline: %s \n", cmd->cmdline);
-	printf("redirect_in: %s , redirect_out: %s \n", cmd->redirect_in, cmd->redirect_out);
-	printf("bg: %i  ", cmd->bg);
-	printf("argc: %i \n ", cmd->argc);
-//	pid_t ppid = getpid();
-//	printf("ppid: %d \n" + ppid);
-	pid_t fpid;
+	//printf("name: %s \n", cmd->name);
+	//printf("cmdline: %s \n", cmd->cmdline);
+	//printf("redirect_in: %s , redirect_out: %s \n", cmd->redirect_in, cmd->redirect_out);
+	//printf("bg: %i  ", cmd->bg);
+	//printf("argc: %i \n ", cmd->argc);
+	pid_t pid;
+	pid = fork();
 	int * status;
-	if ((fpid = fork()) < 0)
+	if (pid < 0)
 	{
-		printf("fpid < 0 \n ");
+		printf("pid < 0 \n ");
 		return;
 	}
-	else if (fpid == 0)
+	if (pid == 0)
 	{
-		//printf("i am child: %d \n" + getpid());
 		//setpgid(0, 0);
-		printf("i am child. \n");
-		if (fpid == NULL)
-		{
-			printf("child. fpid == NULL \n");
-		}
+		//printf("i am child. \n");
 		execv(cmd->name, cmd->argv);
 		exit(0);
 	}
-	else
+	else // prent process
 	{
-		printf("i am parent. \n");
-		//printf("fpid: %d \n" + fpid);
-		if (fpid == NULL)
-		{
-			printf("parent fpid == NULL \n");
-		}
-		else
-		{
-			printf("here \n");
-			//printf("fpid: %d \n" + getpid());
-		}
+		//printf("i am parent. \n");
 		// fg job
 		if (cmd->bg == 0)
 		{
+			fgChild = pid;
 			printf("this is not bg job.\n");
-			//printf("fpid: %s \n" + fpid);
-			waitpid(fpid, &status, 0);
+			printf("pid: %d \n", fgChild);
+			waitpid(pid, &status, 0);
+
+			//while(fgChild > 0)
+			//{
+			//	sleep(1);
+			//}
 		}
 		else // bg job
 		{
 			printf("this is bg job. \n");
 			bgjobL* bgJob = (bgjobL*) malloc(sizeof(bgjobL));
-			printf("new node.\n");
-			bgJob->pid = 99999;
+			bgJob->pid = pid;
+			bgJob->status = RUNNING;
 			bgJob->cmd_first = cmd->argv[0];
-			//printf("bg job pid: %d \n" + bgJob->pid);
+			printf("bg job pid: %d \n", bgJob->pid);
 			bgJob->next = NULL;
 			AddBgJob(bgJob);
-			printBgJobList();
+			//printBgJobList();
 			return;
 		}
 	}
@@ -363,11 +359,30 @@ static void RunBuiltInCmd(commandT* cmd)
 	if (strcmp(cmd_first, "jobs") == 0)
 	{
 		printf("the command is jobs. \n");
+		printBgJobList();
 	}
 }		
 
 void CheckJobs()
 {
+	if (bgjobs == NULL || bgjobs->next == NULL)
+	{
+		return;
+	}
+	bgjobL* previous = bgjobs;
+	bgjobL* cursor = bgjobs->next;
+	while (cursor)
+	{
+		if (cursor->status == DONE)
+		{
+			printf("[%d]   %s              %s \n", cursor->jobId, "DONE", cursor->cmd_first);
+			previous->next = cursor->next;
+			free(cursor->cmd_first);
+			free(cursor);
+		}
+		cursor = previous->next;
+		previous = previous->next;
+	}
 }
 
 

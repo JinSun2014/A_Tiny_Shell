@@ -55,11 +55,14 @@
 /************Global Variables*********************************************/
 
 /************Function Prototypes******************************************/
-/* handles SIGINT and SIGSTOP signals */	
+/* handles SIGINT and SIGSTOP signals */
+extern int fgChild;
 static void sig(int);
 static void sigHandler(int);
 void printPrompt();
-
+extern pid_t waitpid(pid_t pid, int* status, int options);
+extern bgjobL* bgjobs;
+void changeStatus(pid_t id, char* newStatus);
 /************External Declaration*****************************************/
 
 /**************Implementation***********************************************/
@@ -72,13 +75,15 @@ int main (int argc, char *argv[])
   /* shell initialization */
   if (signal(SIGINT, sig) == SIG_ERR) PrintPError("SIGINT");
   if (signal(SIGTSTP, sig) == SIG_ERR) PrintPError("SIGTSTP");
+  if (signal(SIGCHLD, sigHandler) == SIG_ERR) PrintPError("SIGCHLD");
+
 
   while (!forceExit) /* repeat forever */
   {
 	printPrompt();
     /* read command line */
     getCommandLine(&cmdLine, BUFSIZE);
-	printf("cmdLine: %s", cmdLine);
+//	printf("cmdLine: %s", cmdLine);
 
 	// strcmp: string compare
     if(strcmp(cmdLine, "exit") == 0)
@@ -103,12 +108,33 @@ int main (int argc, char *argv[])
 
 static void sig(int signo)
 {
+	switch (signo)
+	{
+		case SIGINT:
+			printf("SIGINT \n");
+			break;
+		case SIGTSTP:
+			printf("SIGTSTP \n");
+			break;
+	}
 }
 
 // used to handler terminated process in background
 static void sigHandler(int signo)
 {
-
+	printf("SIGCHLD \n");
+	pid_t pid;
+	int status;
+	pid = waitpid(-1, &status, WNOHANG|WUNTRACED);
+	printf("status: %d \n", status);
+	printf("sigHandler pid: %d \n" + pid);
+	// handle fg jobs
+	if (pid == fgChild)
+	{
+		fgChild = 0;
+		return;
+	}
+	changeStatus(pid, "DONE");
 }
 
 void printPrompt()
@@ -118,4 +144,23 @@ void printPrompt()
 	char* result = getcwd(buffer, MAXPATH);
 	//substr(result, buffer, 13, strlen(buffer));
 	printf("%s$> ", result);
+}
+
+void changeStatus(pid_t id, char* newStatus)
+{
+	printf("changeStatus id: %d \n", id);
+	if (bgjobs == NULL || bgjobs->next == NULL)
+	{
+		return;
+	}
+	bgjobL* cursor = bgjobs->next;
+	while (cursor)
+	{
+		if (cursor->pid == id)
+		{
+			cursor->status = DONE;
+			return;
+		}
+		cursor = cursor->next;
+	}
 }
