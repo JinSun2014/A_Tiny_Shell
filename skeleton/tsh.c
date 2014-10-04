@@ -62,7 +62,7 @@ static void sigHandler(int);
 void printPrompt();
 extern pid_t waitpid(pid_t pid, int* status, int options);
 extern bgjobL* bgjobs;
-void changeStatus(pid_t id, char* newStatus);
+void changeStatus(pid_t id, state newStatus);
 /************External Declaration*****************************************/
 
 /**************Implementation***********************************************/
@@ -134,7 +134,7 @@ static void sigHandler(int signo)
 		fgChild = 0;
 		return;
 	}
-	changeStatus(pid, "DONE");
+	changeStatus(pid, DONE);
 }
 
 void printPrompt()
@@ -146,7 +146,7 @@ void printPrompt()
 	printf("%s$> ", result);
 }
 
-void changeStatus(pid_t id, char* newStatus)
+void changeStatus(pid_t id, state newStatus)
 {
 	printf("changeStatus id: %d \n", id);
 	if (bgjobs == NULL || bgjobs->next == NULL)
@@ -158,7 +158,8 @@ void changeStatus(pid_t id, char* newStatus)
 	{
 		if (cursor->pid == id)
 		{
-			cursor->status = DONE;
+			//cursor->status = DONE;
+			cursor->status = newStatus;
 			return;
 		}
 		cursor = cursor->next;
