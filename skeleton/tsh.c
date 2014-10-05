@@ -96,6 +96,7 @@ int main (int argc, char *argv[])
       forceExit=TRUE;
       continue;
     }
+    // if (signal(SIGINT, sig) == SIG_ERR) PrintPError("SIGINT");
 
     /* checks the status of background jobs */
     CheckJobs();

@@ -270,7 +270,6 @@ static void Exec(commandT* cmd, bool forceFork)
 	//printf("argc: %i \n ", cmd->argc);
 	pid_t pid;
 	pid = fork();
-	int * status;
 	if (pid < 0)
 	{
 		printf("pid < 0 \n ");
@@ -404,7 +403,7 @@ static void RunBuiltInCmd(commandT* cmd)
 			else // find target job and put it to the fg
 			{
 				targetJobId = atoi(cmd->argv[1]);
-				printf("has arg, jobId: %d\ n", targetJobId);
+				printf("has arg, jobId: %d \n", targetJobId);
 			}
 			bgjobL* popedJob;
 			popedJob = popJob(targetJobId);
