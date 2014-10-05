@@ -64,6 +64,16 @@ typedef struct command_t
   char* argv[];
 } commandT;
 
+typedef enum {RUNNING, STOPPED, DONE} state; 
+typedef struct bgjob_l {
+  char* cmd_first;
+  state status;
+  int jobId;
+  pid_t pid;
+  struct bgjob_l* next;
+} bgjobL;
+
+
 /************Global Variables*********************************************/
 
 /***********************************************************************

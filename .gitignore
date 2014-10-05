@@ -1,3 +1,5 @@
 *.o
 tsh
 *.c~
+*.swp
+*.swm

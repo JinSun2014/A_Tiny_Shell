@@ -203,6 +203,7 @@ void Interpret(char* cmdLine)
   int curser = 0;
   char** cmds = command[0]->argv;
   for (curser = 0; curser < command[0]->argc; ++curser){
+	  printf("%i ", curser);
       printf("%s ", cmds[curser]);
   }
   printf("\n");
