@@ -199,6 +199,11 @@ static bool ResolveExternalCmd(commandT* cmd)
   return FALSE; /*The command is not found or the user don't have enough priority to run.*/
 }
 
+bool isEmpty()
+{
+	return (bgjobs == NULL ||bgjobs->next == NULL);
+}
+
 void AddBgJob(bgjobL* job)
 {
 //	printf("adding bg job to the list. \n ");
@@ -326,6 +331,22 @@ static bool IsBuiltIn(char* cmd)
 	}
 }
 
+bgjobL* popJob(int id)
+{
+	bgjobL* cursor = bgjobs->next;
+	bgjobL* previous = bgjobs;
+	while (cursor!= NULL)
+	{
+		if (cursor->jobId == id)
+		{
+			previous->next = cursor->next;
+			printf("cursor, finish pop \n");
+			return cursor;
+		}
+	}
+	printf("null, finish pop \n");
+	return NULL;
+}
 
 static void RunBuiltInCmd(commandT* cmd)
 {
@@ -354,7 +375,64 @@ static void RunBuiltInCmd(commandT* cmd)
 	// fg command
 	if (strcmp(cmd_first, "fg") == 0)
 	{
+		int targetJobId;
 		printf("the command is fg. \n");
+		if (isEmpty()) // no background jobs, do nothing
+		{
+			printf("there is no jobs in background. \n");
+			return;
+		}
+		else // has background jobs, pop it and exec in fg
+		{
+			// no argument after fg, choose the most recent one to the fg
+			if (cmd->argc == 1)
+			{
+				printf("no arg. \n");
+				printBgJobList();
+				printf(".....\n");
+				bgjobL* cursor = bgjobs->next;
+				while (cursor->next != NULL)
+				{
+					cursor = cursor->next;
+				}
+				targetJobId = cursor->jobId;
+				printf("no arg, find most recent one. jobId:%d \n", targetJobId);
+			}
+			else // find target job and put it to the fg
+			{
+				targetJobId = atoi(cmd->argv[1]);
+				printf("has arg, jobId: %d\ n", targetJobId);
+				//bgjobL* cursor = bgjobs->next;
+				//while (cursor->next != NULL)
+				//{
+				//	if (targetJobId == cursor->jobId)
+				//	{
+				//		
+				//	}
+				//}
+
+			}
+			bgjobL* popedJob;
+			popedJob = popJob(targetJobId);
+			if (popedJob != NULL)
+			{
+				printf("find target bgjob jobId:%d   pid:%d  cmd:%s", popedJob->jobId, popedJob->pid, popedJob->cmd_first);
+				fgChild = popedJob->pid;
+				kill(-fgChild, SIGCONT);
+				while (fgChild)
+				{
+					printf("sleep: %d \n", fgChild);
+					sleep(1);
+				}
+				free(popedJob);
+				return;
+			}
+			else
+			{
+				printf("jobId not found! \n");
+			}
+
+		}
 	}
 
 	// bg command

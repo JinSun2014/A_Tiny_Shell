@@ -75,6 +75,7 @@ int main (int argc, char *argv[])
   /* shell initialization */
   if (signal(SIGINT, sig) == SIG_ERR) PrintPError("SIGINT");
   if (signal(SIGTSTP, sig) == SIG_ERR) PrintPError("SIGTSTP");
+  if (signal(SIGCONT, sig) == SIG_ERR) PrintPError("SIGCONT");
   if (signal(SIGCHLD, sigHandler) == SIG_ERR) PrintPError("SIGCHLD");
 
 
@@ -116,6 +117,9 @@ static void sig(int signo)
 		case SIGTSTP:
 			printf("SIGTSTP \n");
 			break;
+		case SIGCONT:
+			printf("SIGCONT \n");
+			break;
 	}
 }
 
@@ -127,7 +131,7 @@ static void sigHandler(int signo)
 	int status;
 	pid = waitpid(-1, &status, WNOHANG|WUNTRACED);
 	printf("status: %d \n", status);
-	printf("sigHandler pid: %d \n" + pid);
+	printf("sigHandler pid: %d \n", pid);
 	// handle fg jobs
 	if (pid == fgChild)
 	{
