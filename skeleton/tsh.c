@@ -118,6 +118,11 @@ static void sig(int signo)
 	{
 		case SIGINT:
 			printf("SIGINT \n");
+			if (fgChild)
+			{
+				kill(fgChild, SIGINT);
+			}
+			fgChild = 0;
 			break;
 		case SIGTSTP:
 			printf("SIGTSTP \n");
