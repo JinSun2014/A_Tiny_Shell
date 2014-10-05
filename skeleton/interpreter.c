@@ -56,6 +56,7 @@ char* single_param(char *st)
       if(st[idx] == '<' || st[idx] == '>') {st[idx] = '\0'; return t;}
       if(st[idx] == ' ' && quot1 == 0 && quot2 == 0) {st[idx] = '\0';return t;}
       if(st[idx] == '\'' && quot1 == 1) {st[idx] = '\0';return t;}
+      if(st[idx] == '\'' && quot1 == 0) {quot1 = 1;}
       if(st[idx] == '"' && quot2 == 1) {st[idx] = '\0';return t;}
     }
     else{
@@ -203,7 +204,7 @@ void Interpret(char* cmdLine)
   int curser = 0;
   char** cmds = command[0]->argv;
   for (curser = 0; curser < command[0]->argc; ++curser){
-	  printf("%i ", curser);
+      printf("%i: ", curser);
       printf("%s ", cmds[curser]);
   }
   printf("\n");

@@ -54,22 +54,27 @@
 #define MAXPATH 80
 /************Global Variables*********************************************/
 
-/************Function Prototypes******************************************/
-/* handles SIGINT and SIGSTOP signals */
+/************External Declaration*****************************************/
+extern aliasL* aliasList;
 extern int fgChild;
 extern char* fgCmd_first;
+extern bgjobL* bgjobs;
+
+extern void printBgJobList();
+extern void AddBgJob(bgjobL* job);
+extern void printAlias();
+extern pid_t waitpid(pid_t pid, int* status, int options);
+
+/************Function Prototypes******************************************/
+/* handles SIGINT and SIGSTOP signals */
+int getJobId();
 static void sig(int);
 static void sigHandler(int);
 void printPrompt();
-extern pid_t waitpid(pid_t pid, int* status, int options);
-extern bgjobL* bgjobs;
 void changeStatus(pid_t id, state newStatus);
-int getJobId();
-extern void printBgJobList();
-extern void AddBgJob(bgjobL* job);
-/************External Declaration*****************************************/
+void releaseAlias(aliasL*);
 
-/**************Implementation***********************************************/
+/**************Implementation*********************************************/
 
 int main (int argc, char *argv[])
 {
@@ -88,7 +93,6 @@ int main (int argc, char *argv[])
 	printPrompt();
     /* read command line */
     getCommandLine(&cmdLine, BUFSIZE);
-//	printf("cmdLine: %s", cmdLine);
 
 	// strcmp: string compare
     if(strcmp(cmdLine, "exit") == 0)
@@ -96,7 +100,6 @@ int main (int argc, char *argv[])
       forceExit=TRUE;
       continue;
     }
-    // if (signal(SIGINT, sig) == SIG_ERR) PrintPError("SIGINT");
 
     /* checks the status of background jobs */
     CheckJobs();
@@ -109,6 +112,11 @@ int main (int argc, char *argv[])
 
   /* shell termination */
   free(cmdLine);
+  releaseAlias(aliasList);
+  /* print all lists and check */
+  printf("\n\n ---------TERMINATE SHELL--------\n");
+  printf("Alias:\n");
+  printAlias();
   return 0;
 } /* end main */
 
@@ -216,4 +224,17 @@ int getJobId()
 		}
 		return total;
 	}
+}
+
+void releaseAlias(aliasL* aliasList){
+    aliasL* curser = aliasList;
+    while (aliasList != NULL){
+        curser = aliasList;
+        aliasList = aliasList->next;
+        curser->next = NULL;
+        if (curser->originCmd != NULL)  free(curser->originCmd);
+        if (curser->aliasCmd != NULL)   free(curser->aliasCmd);
+        free(curser);
+    }
+    aliasList = NULL;
 }

@@ -64,7 +64,8 @@ typedef struct command_t
   char* argv[];
 } commandT;
 
-typedef enum {RUNNING, STOPPED, DONE} state; 
+typedef enum {RUNNING, STOPPED, DONE} state;
+
 typedef struct bgjob_l {
   char* cmd_first;
   state status;
@@ -72,6 +73,12 @@ typedef struct bgjob_l {
   pid_t pid;
   struct bgjob_l* next;
 } bgjobL;
+
+typedef struct alias_l {
+    char* aliasCmd;
+    char* originCmd;
+    struct alias_l* next;
+} aliasL;
 
 
 /************Global Variables*********************************************/
@@ -183,6 +190,8 @@ EXTERN char* getLogin();
  *    Output: void 
  ***********************************************************************/
 EXTERN void CheckJobs();
+EXTERN void printAlias();
+char* substring(char*, int, int);
 
 /************External Declaration*****************************************/
 

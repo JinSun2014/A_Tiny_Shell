@@ -1,5 +1,5 @@
 /***************************************************************************
- *  Title: Runtime environment 
+* *  Title: Runtime environment 
  * -------------------------------------------------------------------------
  *    Purpose: Runs commands
  *    Author: Stefan Birrer
@@ -68,6 +68,10 @@
 bgjobL *bgjobs = NULL;
 int fgChild;
 char* fgCmd_first;
+
+/* List of alias */
+aliasL *aliasList = NULL;
+
 /************Function Prototypes******************************************/
 /* run command */
 static void RunCmdFork(commandT*, bool);
@@ -81,6 +85,16 @@ static void Exec(commandT*, bool);
 static void RunBuiltInCmd(commandT*);
 /* checks whether a command is a builtin command */
 static bool IsBuiltIn(char*);
+/* checks whether a command is alias and replace with origin command */
+static void checkAlias(commandT*);
+/* set alias */
+static void setAlias(commandT*);
+/* unset alias */
+static void unsetAlias(commandT*);
+/* print alias */
+void printAlias();
+/* parse alias */
+static void parseAlias(char*, char**, char**);
 /************External Declaration*****************************************/
 
 /**************Implementation***********************************************/
@@ -116,6 +130,7 @@ void RunCmdFork(commandT* cmd, bool fork)
   else
   {
   	printf("running external cmd.\n");
+    checkAlias(cmd);
     RunExternalCmd(cmd, fork);
   }
 }
@@ -319,14 +334,20 @@ static void Exec(commandT* cmd, bool forceFork)
 
 static bool IsBuiltIn(char* cmd)
 {
-	if ((strcmp(cmd, "cd") == 0) || strcmp(cmd, "bg") == 0 || strcmp(cmd, "fg") == 0 || strcmp(cmd, "jobs") == 0)
+	if ((strcmp(cmd, "cd") == 0) || \
+         strcmp(cmd, "bg") == 0 || \
+         strcmp(cmd, "fg") == 0 || \
+         strcmp(cmd, "jobs") == 0 || \
+         strcmp(cmd, "alias") == 0 || \
+         strcmp(cmd, "unalias") == 0 \
+         )
 	{
-		printf("build in function. \n");
+		printf("Builtin function. \n");
 		return TRUE;
 	}
 	else
 	{
-		printf("not build in function. \n");
+		printf("NOT builtin function. \n");
 		return FALSE;
 	}
 }
@@ -372,8 +393,8 @@ static void RunBuiltInCmd(commandT* cmd)
 		{
 			printf("error in cd.\n");
 		}
-	}	
-	
+    }
+
 	// fg command
 	if (strcmp(cmd_first, "fg") == 0)
 	{
@@ -485,7 +506,20 @@ static void RunBuiltInCmd(commandT* cmd)
 		printf("the command is jobs. \n");
 		printBgJobList();
 	}
-}		
+
+    // alias command
+    if (strcmp(cmd_first, "alias") == 0)
+    {
+        if (cmd->argc <= 1)
+            printAlias();
+        else
+            setAlias(cmd);
+    }
+    else if (strcmp(cmd_first, "unalias") == 0)
+    {
+        unsetAlias(cmd);
+    }
+}
 
 void CheckJobs()
 {
@@ -538,4 +572,81 @@ void ReleaseCmdT(commandT **cmd){
   for(i = 0; i < (*cmd)->argc; i++)
     if((*cmd)->argv[i] != NULL) free((*cmd)->argv[i]);
   free(*cmd);
+}
+
+void checkAlias(commandT *cmd){
+}
+
+void setAlias(commandT* cmd){
+    char *aliasCmd = NULL;
+    char *originCmd = NULL;
+
+    parseAlias(cmd->argv[1], &aliasCmd, &originCmd);
+    if (aliasList == NULL){
+        aliasList = (aliasL*) malloc(sizeof(aliasL));
+        aliasList->aliasCmd = aliasCmd;
+        aliasList->originCmd = originCmd;
+        aliasList->next = NULL;
+    } else {
+        aliasL* curser = aliasList;
+        while (curser->next != NULL)    curser = curser->next;
+        aliasL* newAlias = (aliasL*) malloc(sizeof(aliasL));
+        newAlias->aliasCmd = aliasCmd;
+        newAlias->originCmd = originCmd;
+        newAlias->next = NULL;
+        curser->next = newAlias;
+        newAlias = NULL;
+    }
+}
+
+void unsetAlias(commandT* cmd){
+}
+
+void printAlias(){
+    aliasL* curser = aliasList;
+    while (curser){
+        printf("alias %s='%s'\n", curser->aliasCmd, curser->originCmd);
+        curser = curser->next;
+    }
+}
+
+void parseAlias(char* cmdline, char** aliasCmd, char** originCmd){
+    int i = 0;
+    int quotation1 = -1;
+    for (i = 0; i < strlen(cmdline); i++){
+       if (cmdline[i] == '\''){
+               quotation1 = i;
+               break;
+       }
+    }
+    (*aliasCmd) = substring(cmdline, 0, quotation1 - 1);
+    (*originCmd) = substring(cmdline, quotation1 + 2, strlen(cmdline) - quotation1 - 1);
+    printf("**Parse Alias, aliasCmd: %s, originalCmd: %s\n", *aliasCmd, *originCmd);
+}
+
+char* substring(char *string, int position, int length)
+{
+    char *pointer;
+    int c;
+
+    pointer = malloc(sizeof(char) * (length+1));
+
+    if (pointer == NULL)
+    {
+        printf("Unable to allocate memory.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    for (c = 0 ; c < position -1 ; c++)
+        string++;
+
+    for (c = 0 ; c < length ; c++)
+    {
+        *(pointer+c) = *string;
+        string++;
+    }
+
+    *(pointer+c) = '\0';
+
+    return pointer;
 }
