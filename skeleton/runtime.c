@@ -67,6 +67,7 @@
 /* the pids of the background processes */
 bgjobL *bgjobs = NULL;
 int fgChild;
+char* fgCmd_first;
 /************Function Prototypes******************************************/
 /* run command */
 static void RunCmdFork(commandT*, bool);
@@ -290,14 +291,15 @@ static void Exec(commandT* cmd, bool forceFork)
 		if (cmd->bg == 0)
 		{
 			fgChild = pid;
+			fgCmd_first = cmd->cmdline;
 			printf("this is not bg job.\n");
 			printf("pid: %d \n", fgChild);
-			waitpid(pid, &status, 0);
+		//	waitpid(pid, &status, 0);
 
-			//while(fgChild > 0)
-			//{
-			//	sleep(1);
-			//}
+			while(fgChild > 0)
+			{
+				sleep(1);
+			}
 		}
 		else // bg job
 		{
@@ -343,6 +345,8 @@ bgjobL* popJob(int id)
 			printf("cursor, finish pop \n");
 			return cursor;
 		}
+		cursor = cursor->next;
+		previous = previous->next;
 	}
 	printf("null, finish pop \n");
 	return NULL;
@@ -402,15 +406,6 @@ static void RunBuiltInCmd(commandT* cmd)
 			{
 				targetJobId = atoi(cmd->argv[1]);
 				printf("has arg, jobId: %d\ n", targetJobId);
-				//bgjobL* cursor = bgjobs->next;
-				//while (cursor->next != NULL)
-				//{
-				//	if (targetJobId == cursor->jobId)
-				//	{
-				//		
-				//	}
-				//}
-
 			}
 			bgjobL* popedJob;
 			popedJob = popJob(targetJobId);
@@ -418,6 +413,7 @@ static void RunBuiltInCmd(commandT* cmd)
 			{
 				printf("find target bgjob jobId:%d   pid:%d  cmd:%s", popedJob->jobId, popedJob->pid, popedJob->cmd_first);
 				fgChild = popedJob->pid;
+				fgCmd_first = popedJob->cmd_first;
 				kill(-fgChild, SIGCONT);
 				while (fgChild)
 				{
@@ -430,6 +426,7 @@ static void RunBuiltInCmd(commandT* cmd)
 			else
 			{
 				printf("jobId not found! \n");
+				return;
 			}
 
 		}
@@ -438,7 +435,50 @@ static void RunBuiltInCmd(commandT* cmd)
 	// bg command
 	if (strcmp(cmd_first, "bg") == 0)
 	{
+		int targetJobId;
 		printf("the command is bg. \n");
+		if (isEmpty()) // no background jobs, do nothing
+		{
+			printf("there is no jobs in background. \n");
+			return;
+		}
+		else // has background jobs
+		{
+			if (cmd->argc == 1) // no arg, find the most recent one 
+			{
+				printf("no arg. \n");
+				bgjobL* cursor = bgjobs->next;
+				while (cursor->next != NULL)
+				{
+					cursor = cursor->next;
+				}
+				targetJobId = cursor->jobId;
+				printf("no arg, find most recent one. jobId: %d \n", targetJobId);
+			}
+			else // has arg, find it
+			{
+				targetJobId = atoi(cmd->argv[1]);
+			}
+			printf("has arg, jobId: %d \n", targetJobId);
+			bgjobL* cursor = bgjobs->next;
+			while (cursor)
+			{
+				if (cursor->jobId == targetJobId)
+				{
+					cursor->status = STOPPED;
+					break;
+				}
+				cursor = cursor->next;
+			}
+			if (cursor == NULL)
+			{
+				printf("job not found. \n");
+				return;
+			}
+			kill(cursor->pid, SIGCONT);
+			cursor->status = RUNNING;
+			return;
+		}
 	}
 
 	// jobs command

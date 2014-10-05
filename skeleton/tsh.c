@@ -57,12 +57,16 @@
 /************Function Prototypes******************************************/
 /* handles SIGINT and SIGSTOP signals */
 extern int fgChild;
+extern char* fgCmd_first;
 static void sig(int);
 static void sigHandler(int);
 void printPrompt();
 extern pid_t waitpid(pid_t pid, int* status, int options);
 extern bgjobL* bgjobs;
 void changeStatus(pid_t id, state newStatus);
+int getJobId();
+extern void printBgJobList();
+extern void AddBgJob(bgjobL* job);
 /************External Declaration*****************************************/
 
 /**************Implementation***********************************************/
@@ -116,6 +120,20 @@ static void sig(int signo)
 			break;
 		case SIGTSTP:
 			printf("SIGTSTP \n");
+			if (fgChild)
+			{
+				kill(-fgChild, SIGTSTP);
+				bgjobL* newBgJob = (bgjobL*) malloc(sizeof(bgjobL));
+				newBgJob->pid = fgChild;
+				newBgJob->cmd_first = fgCmd_first;
+				newBgJob->status = STOPPED;
+				newBgJob->jobId = getJobId() + 1;
+				AddBgJob(newBgJob);
+				printf("[%d]   %s             %s\n",newBgJob-> jobId, "STOPPED", fgCmd_first);
+				fgChild = 0;
+				fgCmd_first = NULL;
+				printBgJobList();
+			}
 			break;
 		case SIGCONT:
 			printf("SIGCONT \n");
@@ -130,6 +148,16 @@ static void sigHandler(int signo)
 	pid_t pid;
 	int status;
 	pid = waitpid(-1, &status, WNOHANG|WUNTRACED);
+	// ignore stopped processes
+	if (!WIFEXITED(status))
+	{
+		return;
+	}
+	// ignore continued processes
+	if (WIFCONTINUED(status))
+	{
+		return;
+	}
 	printf("status: %d \n", status);
 	printf("sigHandler pid: %d \n", pid);
 	// handle fg jobs
@@ -167,5 +195,24 @@ void changeStatus(pid_t id, state newStatus)
 			return;
 		}
 		cursor = cursor->next;
+	}
+}
+
+int getJobId()
+{
+	int total = 0;
+	if (bgjobs == NULL || bgjobs->next == NULL)
+	{
+		return total;
+	}
+	else
+	{
+		bgjobL* cursor = bgjobs->next;
+		while (cursor != NULL)
+		{
+			total++;
+			cursor = cursor->next;
+		}
+		return total;
 	}
 }
