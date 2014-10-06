@@ -135,10 +135,10 @@ static void sig(int signo)
 				newBgJob->status = STOPPED;
 				newBgJob->jobId = getJobId() + 1;
 				AddBgJob(newBgJob);
-				printf("[%d]   %s             %s\n",newBgJob-> jobId, "STOPPED", fgCmd_first);
+				printf("[%d]   %s             %s\n",newBgJob-> jobId, "Stopped", fgCmd_first);
 				fgChild = 0;
 				fgCmd_first = NULL;
-				printBgJobList();
+				//printBgJobList();
 			}
 			break;
 		case SIGCONT:
