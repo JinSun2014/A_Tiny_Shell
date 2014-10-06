@@ -43,7 +43,7 @@ TESTING_PROGS = myspin mysplit mystop
 VM_NAME = "Ubuntu_1404"
 VM_PORT = "3022"
 
-SHELL_ARCH = "64"
+SHELL_ARCH = "32"
 
 all: ${PROGS}
 

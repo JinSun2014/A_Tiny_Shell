@@ -117,7 +117,7 @@ static void sig(int signo)
 	switch (signo)
 	{
 		case SIGINT:
-			printf("SIGINT \n");
+			//printf("SIGINT \n");
 			if (fgChild)
 			{
 				kill(fgChild, SIGINT);
@@ -125,7 +125,7 @@ static void sig(int signo)
 			fgChild = 0;
 			break;
 		case SIGTSTP:
-			printf("SIGTSTP \n");
+			//printf("SIGTSTP \n");
 			if (fgChild)
 			{
 				kill(-fgChild, SIGTSTP);
@@ -142,15 +142,16 @@ static void sig(int signo)
 			}
 			break;
 		case SIGCONT:
-			printf("SIGCONT \n");
+			//printf("SIGCONT \n");
 			break;
 	}
+	fflush(stdout);
 }
 
 // used to handler terminated process in background
 static void sigHandler(int signo)
 {
-	printf("SIGCHLD \n");
+	//printf("SIGCHLD \n");
 	pid_t pid;
 	int status;
 	pid = waitpid(-1, &status, WNOHANG|WUNTRACED);
@@ -164,8 +165,8 @@ static void sigHandler(int signo)
 	{
 		return;
 	}
-	printf("status: %d \n", status);
-	printf("sigHandler pid: %d \n", pid);
+	//printf("status: %d \n", status);
+	//printf("sigHandler pid: %d \n", pid);
 	// handle fg jobs
 	if (pid == fgChild)
 	{
@@ -178,15 +179,15 @@ static void sigHandler(int signo)
 void printPrompt()
 {
 	// get current directory path
-	char buffer[MAXPATH];
-	char* result = getcwd(buffer, MAXPATH);
+	//char buffer[MAXPATH];
+	//char* result = getcwd(buffer, MAXPATH);
 	//substr(result, buffer, 13, strlen(buffer));
-	printf("%s$> ", result);
+	//printf("%s$> ", result);
 }
 
 void changeStatus(pid_t id, state newStatus)
 {
-	printf("changeStatus id: %d \n", id);
+	//printf("changeStatus id: %d \n", id);
 	if (bgjobs == NULL || bgjobs->next == NULL)
 	{
 		return;

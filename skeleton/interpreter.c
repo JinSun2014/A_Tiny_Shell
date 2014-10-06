@@ -136,7 +136,7 @@ void parser_single(char *c, int sz, commandT** cd, int bg)
 /*Parse the whole command line and split commands if a piped command is sent.*/
 void Interpret(char* cmdLine)
 {
-	printf("interpret: %s \n", cmdLine);
+  //printf("interpret: %s \n", cmdLine);
   int task = 1;
   int bg = 0, i,k,j = 0, quotation1 = 0, quotation2 = 0;
   commandT **command;
@@ -199,14 +199,14 @@ void Interpret(char* cmdLine)
   }
   parser_single(&(cmdLine[i-j]), j, &(command[task]),bg);
 
-  printf("Your command is: ");
-  int curser = 0;
-  char** cmds = command[0]->argv;
-  for (curser = 0; curser < command[0]->argc; ++curser){
-	  printf("%i ", curser);
-      printf("%s ", cmds[curser]);
-  }
-  printf("\n");
+  //printf("Your command is: ");
+  //int curser = 0;
+  //char** cmds = command[0]->argv;
+  //for (curser = 0; curser < command[0]->argc; ++curser){
+	//  printf("%i ", curser);
+      //printf("%s ", cmds[curser]);
+  //}
+  //printf("\n");
 
 
   RunCmd(command, task+1);
