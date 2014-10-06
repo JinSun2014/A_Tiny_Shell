@@ -360,7 +360,7 @@ static void RunBuiltInCmd(commandT* cmd)
 	{
 		//printf("the command is cd. \n");
 		int cd_result;
-		char* homeDirectory = "/home/";
+		char* homeDirectory = getenv("HOME");
 		if (cmd->argc == 1)
 		{
 			cd_result = chdir(homeDirectory);
