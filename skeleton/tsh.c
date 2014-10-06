@@ -117,15 +117,14 @@ static void sig(int signo)
 	switch (signo)
 	{
 		case SIGINT:
-			//printf("SIGINT \n");
 			if (fgChild)
 			{
 				kill(fgChild, SIGINT);
 			}
 			fgChild = 0;
 			break;
+		// handle ctrl-z signal
 		case SIGTSTP:
-			//printf("SIGTSTP \n");
 			if (fgChild)
 			{
 				kill(-fgChild, SIGTSTP);
@@ -138,11 +137,9 @@ static void sig(int signo)
 				printf("[%d]   %s             %s\n",newBgJob-> jobId, "Stopped", fgCmd_first);
 				fgChild = 0;
 				fgCmd_first = NULL;
-				//printBgJobList();
 			}
 			break;
 		case SIGCONT:
-			//printf("SIGCONT \n");
 			break;
 	}
 	fflush(stdout);
@@ -151,7 +148,6 @@ static void sig(int signo)
 // used to handler terminated process in background
 static void sigHandler(int signo)
 {
-	//printf("SIGCHLD \n");
 	pid_t pid;
 	int status;
 	pid = waitpid(-1, &status, WNOHANG|WUNTRACED);
@@ -165,8 +161,6 @@ static void sigHandler(int signo)
 	{
 		return;
 	}
-	//printf("status: %d \n", status);
-	//printf("sigHandler pid: %d \n", pid);
 	// handle fg jobs
 	if (pid == fgChild)
 	{
@@ -176,6 +170,7 @@ static void sigHandler(int signo)
 	changeStatus(pid, DONE);
 }
 
+// prompt of the shell
 void printPrompt()
 {
 	// get current directory path
@@ -185,9 +180,9 @@ void printPrompt()
 	//printf("%s$> ", result);
 }
 
+// change the status of specific job
 void changeStatus(pid_t id, state newStatus)
 {
-	//printf("changeStatus id: %d \n", id);
 	if (bgjobs == NULL || bgjobs->next == NULL)
 	{
 		return;
@@ -205,6 +200,7 @@ void changeStatus(pid_t id, state newStatus)
 	}
 }
 
+// get current amount of jobId
 int getJobId()
 {
 	int total = 0;

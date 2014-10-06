@@ -87,9 +87,6 @@ static bool IsBuiltIn(char*);
 int total_task;
 void RunCmd(commandT** cmd, int n)
 {
-	//char * path;
-	//path = getCurrentWorkingDir();
-	//printf("current working dir: %s \n", path);
   int i;
   total_task = n;
  // printf("total_task: %d \n", n);
@@ -200,11 +197,13 @@ static bool ResolveExternalCmd(commandT* cmd)
   return FALSE; /*The command is not found or the user don't have enough priority to run.*/
 }
 
+/* check the bgjob list is empty or not*/
 bool isEmpty()
 {
 	return (bgjobs == NULL ||bgjobs->next == NULL);
 }
 
+/* add one job into the bgjob list */
 void AddBgJob(bgjobL* job)
 {
 //	printf("adding bg job to the list. \n ");
@@ -228,6 +227,7 @@ void AddBgJob(bgjobL* job)
 	}
 }
 
+/* print the bgjob list */
 void printBgJobList()
 {
 	//printf("printing bg jobs. \n");
@@ -333,6 +333,7 @@ static bool IsBuiltIn(char* cmd)
 	}
 }
 
+/* pop specific job out from the bg job list*/
 bgjobL* popJob(int id)
 {
 	bgjobL* cursor = bgjobs->next;
@@ -489,6 +490,7 @@ static void RunBuiltInCmd(commandT* cmd)
 	}
 }		
 
+/* pop out all "DONE" jobs in the bgjob list */
 void CheckJobs()
 {
 	if (bgjobs == NULL || bgjobs->next == NULL)
