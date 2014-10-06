@@ -589,17 +589,59 @@ void setAlias(commandT* cmd){
         aliasList->next = NULL;
     } else {
         aliasL* curser = aliasList;
-        while (curser->next != NULL)    curser = curser->next;
-        aliasL* newAlias = (aliasL*) malloc(sizeof(aliasL));
-        newAlias->aliasCmd = aliasCmd;
-        newAlias->originCmd = originCmd;
-        newAlias->next = NULL;
-        curser->next = newAlias;
-        newAlias = NULL;
+        if (strcmp(curser->aliasCmd, aliasCmd) == 0){
+            free(curser->originCmd);
+            curser->originCmd = originCmd;
+            free(aliasCmd);
+            return;
+        }
+        while (curser->next != NULL && strcmp(curser->next->aliasCmd, aliasCmd) != 0)
+            curser = curser->next;
+        if (curser->next != NULL){
+            free(curser->originCmd);
+            curser->originCmd = originCmd;
+            free(aliasCmd);
+        }
+        else{
+            aliasL* newAlias = (aliasL*) malloc(sizeof(aliasL));
+            newAlias->aliasCmd = aliasCmd;
+            newAlias->originCmd = originCmd;
+            newAlias->next = NULL;
+            curser->next = newAlias;
+            newAlias = NULL;
+        }
     }
 }
 
 void unsetAlias(commandT* cmd){
+    char *aliasCmd = cmd->argv[1];
+
+    aliasL* curser = aliasList;
+    if (curser){
+        if (strcmp(curser->aliasCmd, aliasCmd) == 0){
+            aliasL* tmp = aliasList;
+            aliasList = aliasList->next;
+            free(tmp->originCmd);
+            free(tmp->aliasCmd);
+            free(tmp);
+            free(aliasCmd);
+            tmp = NULL;
+            return;
+        }
+        while (curser->next){
+            if (strcmp(curser->next->aliasCmd, aliasCmd) == 0){
+                aliasL* tmp = curser->next;
+                curser->next = curser->next->next;
+                free(tmp->originCmd);
+                free(tmp->aliasCmd);
+                free(tmp);
+                free(aliasCmd);
+                tmp = NULL;
+                return;
+            }
+        }
+    }
+    printf("Command not find: %s\n", aliasCmd);
 }
 
 void printAlias(){
