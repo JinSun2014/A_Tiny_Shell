@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/types.h>
 #include <unistd.h>
 /************Private include**********************************************/
 #include "interpreter.h"
@@ -46,6 +47,7 @@ typedef struct string_l {
 EXTERN aliasL* aliasList;
 static char** str_split(char*, const char);
 static char* replaceAlias(char*);
+static char* replaceHomeDir(char*);
 
 /****************Function Implementation**************/
 
@@ -157,6 +159,11 @@ void Interpret(char* cmdLine)
       cmdLine = newCmd;
   }
   // printf("--After:cmdline: %s\n", cmdLine);
+  newCmd = replaceHomeDir(cmdLine);
+  if (newCmd){
+      free(cmdLine);
+      cmdLine = newCmd;
+  }
 
   for(i = 0; i < strlen(cmdLine); i++){
     if(cmdLine[i] == '\''){
@@ -336,5 +343,32 @@ char* replaceAlias(char* cmdline){
             free(*(tokens + i));
         }
         return oldCmd;
+    }
+}
+
+char* replaceHomeDir(char* cmdline){
+    int i = 0;
+    // struct passwd *pw = getpwuid(getuid());
+    const char *homedir = getenv("HOME");
+    bool hasTelta = FALSE;
+    for (i = 0; i != strlen(cmdline); ++i){
+        if (cmdline[i] == '~'){
+            hasTelta = TRUE;
+        }
+    }
+    if (hasTelta){
+        char* newCmd = malloc(sizeof(char) * 50);
+        newCmd[0] = '\0';
+        char** tokens = str_split(cmdline, '~');
+        i = 0;
+        for (; *(tokens + i); ++i){
+            strcat(newCmd, *(tokens + i));
+            if (!*(tokens + i + 1))
+                strcat(newCmd, homedir);
+        }
+        return newCmd;
+    }
+    else{
+        return NULL;
     }
 }

@@ -86,7 +86,7 @@ static void RunBuiltInCmd(commandT*);
 /* checks whether a command is a builtin command */
 static bool IsBuiltIn(char*);
 /* set alias */
-static void setAlias(commandT*);
+void setAlias(commandT*);
 /* unset alias */
 static void unsetAlias(commandT*);
 /* print alias */
@@ -583,6 +583,13 @@ void setAlias(commandT* cmd){
     char *originCmd = NULL;
 
     parseAlias(cmd->argv[1], &aliasCmd, &originCmd);
+    int i;
+    for (i = strlen(originCmd) - 1; originCmd[i] == ' '; --i){
+        originCmd[i] = '\0';
+    }
+    for (i = strlen(aliasCmd) - 1; aliasCmd[i] == ' '; --i){
+        originCmd[i] = '\0';
+    }
     if (!isValidAlias(aliasCmd, originCmd)){
         return;
     }
@@ -656,7 +663,7 @@ void unsetAlias(commandT* cmd){
             curser = curser->next;
         }
     }
-    printf("Command not find: %s\n", originCmd);
+    printf("%s: command not found\n", originCmd);
 }
 
 void printAlias(){

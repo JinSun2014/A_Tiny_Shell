@@ -87,7 +87,6 @@ int main (int argc, char *argv[])
   if (signal(SIGCONT, sig) == SIG_ERR) PrintPError("SIGCONT");
   if (signal(SIGCHLD, sigHandler) == SIG_ERR) PrintPError("SIGCHLD");
 
-
   while (!forceExit) /* repeat forever */
   {
 	printPrompt();
