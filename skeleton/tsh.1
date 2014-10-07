@@ -1,0 +1,23 @@
+.\"This is the man page for tiny shell project.
+.\"`groff -man -Tascii tsh.1' to see the formatted man page.
+.\" NOTE: We implemented both pipe and IO redirection.
+.TH TSH 1 "tsh-A tiny shell" "Northwestern University EECS 343 Operating System - Fall 2014"
+.SH NAME 
+tsh \- A tiny shell
+.SH SYNOPSIS
+.B tsh is a simple command line shell behaves like other UNIX Shell(bash, etc). Allows a user to background or foreground jobs, alias command.
+.SH DESCRIPTION
+.B
+A tiny shell, implement all base requirements, including build in command.
+.SH BUILT-IN COMMANDS
+.IPcd, 
+bg, 
+fg, 
+jobs
+.SH DESIGN APPROACH
+.B We use a linked list to store all background jobs. We store the pid, jobId, status, cmdline and a point points to next job for each job. 
+To begin with, we read each command from the terminal. For every frontground command, we use two external variable to store its pid and cmdline. for each background command, we put it into the linked list as "RUNNING" status. Everytime one job terminated, it will send out a SIGCHLD signal, we will change its status to "DONE" in the signal handler. The checkJobs function will pop out all jobs whose status is "DONE" in the linked list. If the user press ctrl-z, the shell will send out a SIGTSTP signal, we will move current frontground job into the linked list and change status to "STOPPED". if the user press ctrl-c, the shell will send out a SIGINT signal, we just kill that job.
+For build in command, we use chdir function to implement the "cd" command. For "fg" command, we pop out the job from the linked list and make it run frontground. For "bg" command, we put that job into the linked list. For "jobs" command, we just print the linked list.
+.SH AUTHOR
+Jin Sun -  
+Yuchao Zhou - yzr736 yuchaozhou2014@u.northwestern.edu
