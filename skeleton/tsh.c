@@ -113,10 +113,10 @@ int main (int argc, char *argv[])
   /* shell termination */
   free(cmdLine);
   releaseAlias(aliasList);
-  /* print all lists and check */
+  /* print all lists and check 
   printf("\n\n ---------TERMINATE SHELL--------\n");
   printf("Alias:\n");
-  printAlias();
+  printAlias();*/
   return 0;
 } /* end main */
 

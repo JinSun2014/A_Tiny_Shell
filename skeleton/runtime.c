@@ -85,8 +85,6 @@ static void Exec(commandT*, bool);
 static void RunBuiltInCmd(commandT*);
 /* checks whether a command is a builtin command */
 static bool IsBuiltIn(char*);
-/* checks whether a command is alias and replace with origin command */
-static void checkAlias(commandT*);
 /* set alias */
 static void setAlias(commandT*);
 /* unset alias */
@@ -95,7 +93,10 @@ static void unsetAlias(commandT*);
 void printAlias();
 /* parse alias */
 static void parseAlias(char*, char**, char**);
+/* check if valid Alias */
+static bool isValidAlias(char*, char*);
 /************External Declaration*****************************************/
+EXTERN char* single_param(char*);
 
 /**************Implementation***********************************************/
 int total_task;
@@ -121,13 +122,10 @@ void RunCmdFork(commandT* cmd, bool fork)
   // no built in functions
   if (IsBuiltIn(cmd->argv[0]))
   {
-  	//printf("running build in cmd.\n");
     RunBuiltInCmd(cmd);
   }
   else
   {
-  	printf("running external cmd.\n");
-    checkAlias(cmd);
     RunExternalCmd(cmd, fork);
   }
 }
@@ -579,14 +577,15 @@ void ReleaseCmdT(commandT **cmd){
   free(*cmd);
 }
 
-void checkAlias(commandT *cmd){
-}
-
 void setAlias(commandT* cmd){
+    // printf("set Alias\n");
     char *aliasCmd = NULL;
     char *originCmd = NULL;
 
     parseAlias(cmd->argv[1], &aliasCmd, &originCmd);
+    if (!isValidAlias(aliasCmd, originCmd)){
+        return;
+    }
     if (aliasList == NULL){
         aliasList = (aliasL*) malloc(sizeof(aliasL));
         aliasList->aliasCmd = aliasCmd;
@@ -619,34 +618,35 @@ void setAlias(commandT* cmd){
 }
 
 void unsetAlias(commandT* cmd){
-    char *aliasCmd = cmd->argv[1];
+    char *originCmd = cmd->argv[1];
 
     aliasL* curser = aliasList;
     if (curser){
-        if (strcmp(curser->aliasCmd, aliasCmd) == 0){
+        if (strcmp(curser->originCmd, originCmd) == 0){
             aliasL* tmp = aliasList;
             aliasList = aliasList->next;
             free(tmp->originCmd);
             free(tmp->aliasCmd);
             free(tmp);
-            free(aliasCmd);
+            free(originCmd);
             tmp = NULL;
             return;
         }
         while (curser->next){
-            if (strcmp(curser->next->aliasCmd, aliasCmd) == 0){
+            if (strcmp(curser->next->originCmd, originCmd) == 0){
                 aliasL* tmp = curser->next;
                 curser->next = curser->next->next;
                 free(tmp->originCmd);
                 free(tmp->aliasCmd);
                 free(tmp);
-                free(aliasCmd);
+                free(originCmd);
                 tmp = NULL;
                 return;
             }
+            curser = curser->next;
         }
     }
-    printf("Command not find: %s\n", aliasCmd);
+    printf("Command not find: %s\n", originCmd);
 }
 
 void printAlias(){
@@ -668,7 +668,6 @@ void parseAlias(char* cmdline, char** aliasCmd, char** originCmd){
     }
     (*aliasCmd) = substring(cmdline, 0, quotation1 - 1);
     (*originCmd) = substring(cmdline, quotation1 + 2, strlen(cmdline) - quotation1 - 1);
-    printf("**Parse Alias, aliasCmd: %s, originalCmd: %s\n", *aliasCmd, *originCmd);
 }
 
 char* substring(char *string, int position, int length)
@@ -677,23 +676,31 @@ char* substring(char *string, int position, int length)
     int c;
 
     pointer = malloc(sizeof(char) * (length+1));
-
-    if (pointer == NULL)
-    {
+    if (pointer == NULL){
         printf("Unable to allocate memory.\n");
         exit(EXIT_FAILURE);
     }
-
     for (c = 0 ; c < position -1 ; c++)
         string++;
-
-    for (c = 0 ; c < length ; c++)
-    {
+    for (c = 0 ; c < length ; c++){
         *(pointer+c) = *string;
         string++;
     }
-
     *(pointer+c) = '\0';
-
     return pointer;
+}
+
+bool isValidAlias(char* aliasCmd, char* originCmd){
+    char* cpyOriginCmd = malloc(sizeof(char) * strlen(originCmd));
+    strcpy(cpyOriginCmd, originCmd);
+    char* first_world = single_param(cpyOriginCmd);
+    if (strcmp(first_world, aliasCmd) == 0){
+        // printf("Invliadi Alian!\n");
+        free(cpyOriginCmd);
+        return FALSE;
+    } else{
+        // printf("Valid alian!\n");
+        free(cpyOriginCmd);
+        return TRUE;
+    }
 }
