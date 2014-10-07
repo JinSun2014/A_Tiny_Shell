@@ -1,5 +1,5 @@
 /***************************************************************************
- *  Title: Runtime environment 
+* *  Title: Runtime environment 
  * -------------------------------------------------------------------------
  *    Purpose: Runs commands
  *    Author: Stefan Birrer
@@ -68,6 +68,10 @@
 bgjobL *bgjobs = NULL;
 int fgChild;
 char* fgCmd_first;
+
+/* List of alias */
+aliasL *aliasList = NULL;
+
 /************Function Prototypes******************************************/
 /* run command */
 static void RunCmdFork(commandT*, bool);
@@ -81,18 +85,26 @@ static void Exec(commandT*, bool);
 static void RunBuiltInCmd(commandT*);
 /* checks whether a command is a builtin command */
 static bool IsBuiltIn(char*);
+/* set alias */
+void setAlias(commandT*);
+/* unset alias */
+static void unsetAlias(commandT*);
+/* print alias */
+void printAlias();
+/* parse alias */
+static void parseAlias(char*, char**, char**);
+/* check if valid Alias */
+static bool isValidAlias(char*, char*);
 /************External Declaration*****************************************/
+EXTERN char* single_param(char*);
 
 /**************Implementation***********************************************/
 int total_task;
 void RunCmd(commandT** cmd, int n)
 {
-	//char * path;
-	//path = getCurrentWorkingDir();
-	//printf("current working dir: %s \n", path);
   int i;
   total_task = n;
-  printf("total_task: %d \n", n);
+ // printf("total_task: %d \n", n);
   if(n == 1)
     RunCmdFork(cmd[0], TRUE);
   else{
@@ -110,12 +122,10 @@ void RunCmdFork(commandT* cmd, bool fork)
   // no built in functions
   if (IsBuiltIn(cmd->argv[0]))
   {
-  	printf("running build in cmd.\n");
     RunBuiltInCmd(cmd);
   }
   else
   {
-  	printf("running external cmd.\n");
     RunExternalCmd(cmd, fork);
   }
 }
@@ -200,11 +210,13 @@ static bool ResolveExternalCmd(commandT* cmd)
   return FALSE; /*The command is not found or the user don't have enough priority to run.*/
 }
 
+/* check the bgjob list is empty or not*/
 bool isEmpty()
 {
 	return (bgjobs == NULL ||bgjobs->next == NULL);
 }
 
+/* add one job into the bgjob list */
 void AddBgJob(bgjobL* job)
 {
 //	printf("adding bg job to the list. \n ");
@@ -228,11 +240,13 @@ void AddBgJob(bgjobL* job)
 	}
 }
 
+/* print the bgjob list */
 void printBgJobList()
 {
-	printf("printing bg jobs. \n");
+	//printf("printing bg jobs. \n");
 	if (bgjobs == NULL || bgjobs->next == NULL)
-		printf("no bg jobs in the list. \n");
+		//printf("no bg jobs in the list. \n");
+		return;
 	else
 	{
 		bgjobL* cursor = bgjobs->next;
@@ -241,20 +255,21 @@ void printBgJobList()
 			//printf("bgjob pid: %s   ",cursor->pid);
 			if (cursor->status == RUNNING)
 			{
-				printf("[%d]   %s              %s &\n", cursor->jobId, "RUNNING", cursor->cmd_first);
+				printf("[%d]   %s              %s &\n", cursor->jobId, "Running", cursor->cmd_first);
 			}
 			else if (cursor->status == STOPPED)
 			{
-				printf("[%d]   %s              %s \n", cursor->jobId, "STOPPED", cursor->cmd_first);
+				printf("[%d]   %s              %s \n", cursor->jobId, "Stopped", cursor->cmd_first);
 			}
 			else if (cursor->status == DONE)
 			{
-				printf("[%d]   %s              %s \n", cursor->jobId, "DONE", cursor->cmd_first);
+				printf("[%d]   %s              %s \n", cursor->jobId, "Done", cursor->cmd_first);
 			}
-			printf("bgjob cmd_first: %s   ", cursor->cmd_first);
+			//printf("bgjob cmd_first: %s   ", cursor->cmd_first);
 			cursor = cursor->next;
 		}
-	}	
+	}
+	fflush(stdout);
 }
 
 // fg wait; bg not wait
@@ -290,8 +305,8 @@ static void Exec(commandT* cmd, bool forceFork)
 		{
 			fgChild = pid;
 			fgCmd_first = cmd->cmdline;
-			printf("this is not bg job.\n");
-			printf("pid: %d \n", fgChild);
+			//printf("this is not bg job.\n");
+			//printf("pid: %d \n", fgChild);
 		//	waitpid(pid, &status, 0);
 
 			while(fgChild > 0)
@@ -301,12 +316,12 @@ static void Exec(commandT* cmd, bool forceFork)
 		}
 		else // bg job
 		{
-			printf("this is bg job. \n");
+			//printf("this is bg job. \n");
 			bgjobL* bgJob = (bgjobL*) malloc(sizeof(bgjobL));
 			bgJob->pid = pid;
 			bgJob->status = RUNNING;
 			bgJob->cmd_first = cmd->cmdline;
-			printf("bg job pid: %d \n", bgJob->pid);
+			//printf("bg job pid: %d \n", bgJob->pid);
 			bgJob->next = NULL;
 			AddBgJob(bgJob);
 			//printBgJobList();
@@ -319,18 +334,25 @@ static void Exec(commandT* cmd, bool forceFork)
 
 static bool IsBuiltIn(char* cmd)
 {
-	if ((strcmp(cmd, "cd") == 0) || strcmp(cmd, "bg") == 0 || strcmp(cmd, "fg") == 0 || strcmp(cmd, "jobs") == 0)
+	if ((strcmp(cmd, "cd") == 0) || \
+         strcmp(cmd, "bg") == 0 || \
+         strcmp(cmd, "fg") == 0 || \
+         strcmp(cmd, "jobs") == 0 || \
+         strcmp(cmd, "alias") == 0 || \
+         strcmp(cmd, "unalias") == 0 \
+         )
 	{
-		printf("build in function. \n");
+		// printf("Builtin function. \n");
 		return TRUE;
 	}
 	else
 	{
-		printf("not build in function. \n");
+		// printf("NOT builtin function. \n");
 		return FALSE;
 	}
 }
 
+/* pop specific job out from the bg job list*/
 bgjobL* popJob(int id)
 {
 	bgjobL* cursor = bgjobs->next;
@@ -340,13 +362,13 @@ bgjobL* popJob(int id)
 		if (cursor->jobId == id)
 		{
 			previous->next = cursor->next;
-			printf("cursor, finish pop \n");
+			//printf("cursor, finish pop \n");
 			return cursor;
 		}
 		cursor = cursor->next;
 		previous = previous->next;
 	}
-	printf("null, finish pop \n");
+	//printf("null, finish pop \n");
 	return NULL;
 }
 
@@ -356,32 +378,32 @@ static void RunBuiltInCmd(commandT* cmd)
 	// cd command
 	if (strcmp(cmd_first, "cd") == 0)
 	{
-		printf("the command is cd. \n");
+		//printf("the command is cd. \n");
 		int cd_result;
-		char* homeDirectory = "/home/";
+		char* homeDirectory = getenv("HOME");
 		if (cmd->argc == 1)
 		{
 			cd_result = chdir(homeDirectory);
 		}
 		else
 		{
-			printf("cd argv1: %s \n", cmd->argv[1]);
+			//printf("cd argv1: %s \n", cmd->argv[1]);
 			cd_result = chdir(cmd->argv[1]);
 		}
 		if (cd_result < 0)
 		{
 			printf("error in cd.\n");
 		}
-	}	
-	
+    }
+
 	// fg command
 	if (strcmp(cmd_first, "fg") == 0)
 	{
 		int targetJobId;
-		printf("the command is fg. \n");
+		//printf("the command is fg. \n");
 		if (isEmpty()) // no background jobs, do nothing
 		{
-			printf("there is no jobs in background. \n");
+			//printf("there is no jobs in background. \n");
 			return;
 		}
 		else // has background jobs, pop it and exec in fg
@@ -389,33 +411,33 @@ static void RunBuiltInCmd(commandT* cmd)
 			// no argument after fg, choose the most recent one to the fg
 			if (cmd->argc == 1)
 			{
-				printf("no arg. \n");
-				printBgJobList();
-				printf(".....\n");
+				//printf("no arg. \n");
+				//printBgJobList();
+				//printf(".....\n");
 				bgjobL* cursor = bgjobs->next;
 				while (cursor->next != NULL)
 				{
 					cursor = cursor->next;
 				}
 				targetJobId = cursor->jobId;
-				printf("no arg, find most recent one. jobId:%d \n", targetJobId);
+				//printf("no arg, find most recent one. jobId:%d \n", targetJobId);
 			}
 			else // find target job and put it to the fg
 			{
 				targetJobId = atoi(cmd->argv[1]);
-				printf("has arg, jobId: %d \n", targetJobId);
+				//printf("has arg, jobId: %d \n", targetJobId);
 			}
 			bgjobL* popedJob;
 			popedJob = popJob(targetJobId);
 			if (popedJob != NULL)
 			{
-				printf("find target bgjob jobId:%d   pid:%d  cmd:%s", popedJob->jobId, popedJob->pid, popedJob->cmd_first);
+				//printf("find target bgjob jobId:%d   pid:%d  cmd:%s", popedJob->jobId, popedJob->pid, popedJob->cmd_first);
 				fgChild = popedJob->pid;
 				fgCmd_first = popedJob->cmd_first;
 				kill(-fgChild, SIGCONT);
 				while (fgChild)
 				{
-					printf("sleep: %d \n", fgChild);
+					//printf("sleep: %d \n", fgChild);
 					sleep(1);
 				}
 				free(popedJob);
@@ -434,30 +456,30 @@ static void RunBuiltInCmd(commandT* cmd)
 	if (strcmp(cmd_first, "bg") == 0)
 	{
 		int targetJobId;
-		printf("the command is bg. \n");
+		//printf("the command is bg. \n");
 		if (isEmpty()) // no background jobs, do nothing
 		{
-			printf("there is no jobs in background. \n");
+			//printf("there is no jobs in background. \n");
 			return;
 		}
 		else // has background jobs
 		{
 			if (cmd->argc == 1) // no arg, find the most recent one 
 			{
-				printf("no arg. \n");
+				//printf("no arg. \n");
 				bgjobL* cursor = bgjobs->next;
 				while (cursor->next != NULL)
 				{
 					cursor = cursor->next;
 				}
 				targetJobId = cursor->jobId;
-				printf("no arg, find most recent one. jobId: %d \n", targetJobId);
+				//printf("no arg, find most recent one. jobId: %d \n", targetJobId);
 			}
 			else // has arg, find it
 			{
 				targetJobId = atoi(cmd->argv[1]);
 			}
-			printf("has arg, jobId: %d \n", targetJobId);
+			//printf("has arg, jobId: %d \n", targetJobId);
 			bgjobL* cursor = bgjobs->next;
 			while (cursor)
 			{
@@ -482,11 +504,25 @@ static void RunBuiltInCmd(commandT* cmd)
 	// jobs command
 	if (strcmp(cmd_first, "jobs") == 0)
 	{
-		printf("the command is jobs. \n");
+		//printf("the command is jobs. \n");
 		printBgJobList();
 	}
-}		
 
+    // alias command
+    if (strcmp(cmd_first, "alias") == 0)
+    {
+        if (cmd->argc <= 1)
+            printAlias();
+        else
+            setAlias(cmd);
+    }
+    else if (strcmp(cmd_first, "unalias") == 0)
+    {
+        unsetAlias(cmd);
+    }
+}
+
+/* pop out all "DONE" jobs in the bgjob list */
 void CheckJobs()
 {
 	if (bgjobs == NULL || bgjobs->next == NULL)
@@ -499,7 +535,7 @@ void CheckJobs()
 	{
 		if (cursor->status == DONE)
 		{
-			printf("[%d]  + %s              %s \n", cursor->jobId, "DONE", cursor->cmd_first);
+			printf("[%d]    %s              %s \n", cursor->jobId, "Done", cursor->cmd_first);
 			previous->next = cursor->next;
 			free(cursor->cmd_first);
 			free(cursor);
@@ -511,6 +547,7 @@ void CheckJobs()
 			previous = previous->next;
 		}
 	}
+	fflush(stdout);
 }
 
 
@@ -538,4 +575,174 @@ void ReleaseCmdT(commandT **cmd){
   for(i = 0; i < (*cmd)->argc; i++)
     if((*cmd)->argv[i] != NULL) free((*cmd)->argv[i]);
   free(*cmd);
+}
+
+void setAlias(commandT* cmd){
+    // printf("set Alias\n");
+    char *aliasCmd = NULL;
+    char *originCmd = NULL;
+
+    parseAlias(cmd->argv[1], &aliasCmd, &originCmd);
+    int i;
+    /* get rid of trailing space */
+    for (i = strlen(originCmd) - 1; originCmd[i] == ' '; --i){
+        originCmd[i] = '\0';
+    }
+    for (i = strlen(aliasCmd) - 1; aliasCmd[i] == ' '; --i){
+        originCmd[i] = '\0';
+    }
+    if (!isValidAlias(aliasCmd, originCmd)){
+        return;
+    }
+    /* insert alias by alphabet order */
+    if (aliasList == NULL){
+        aliasList = (aliasL*) malloc(sizeof(aliasL));
+        aliasList->aliasCmd = aliasCmd;
+        aliasList->originCmd = originCmd;
+        aliasList->next = NULL;
+        return;
+    } else {
+        aliasL* curser = aliasList;
+        if (strcmp(curser->aliasCmd, aliasCmd) == 0){
+            free(curser->originCmd);
+            curser->originCmd = originCmd;
+            free(aliasCmd);
+            return;
+        }
+        if (curser->aliasCmd[0] > aliasCmd[0]){
+            aliasL* newAlias = (aliasL*) malloc(sizeof(aliasL));
+            newAlias->aliasCmd = aliasCmd;
+            newAlias->originCmd = originCmd;
+            newAlias->next = curser;
+            aliasList = newAlias;
+            newAlias = NULL;
+            return;
+        }
+        while (curser->next != NULL && strcmp(curser->next->aliasCmd, aliasCmd) != 0 && curser->next->aliasCmd[0] <= aliasCmd[0])
+            curser = curser->next;
+        if (curser->next != NULL){
+            if (curser->next->aliasCmd[0] > aliasCmd[0]){
+                aliasL* newAlias = (aliasL*) malloc(sizeof(aliasL));
+                newAlias->next = curser->next;
+                newAlias->aliasCmd = aliasCmd;
+                newAlias->originCmd = originCmd;
+                curser->next = newAlias;
+                newAlias = NULL;
+                return;
+            }
+            else{
+                free(curser->next->originCmd);
+                curser->next->originCmd = originCmd;
+                free(aliasCmd);
+                return;
+            }
+        }
+        else{
+            aliasL* newAlias = (aliasL*) malloc(sizeof(aliasL));
+            newAlias->aliasCmd = aliasCmd;
+            newAlias->originCmd = originCmd;
+            newAlias->next = NULL;
+            curser->next = newAlias;
+            newAlias = NULL;
+            return;
+        }
+    }
+}
+
+void unsetAlias(commandT* cmd){
+    char *originCmd = malloc(sizeof(char) * 50);
+    originCmd[0] = '\0';
+    int counter = 0;
+    int i;
+    for (i = 1; i != cmd->argc; ++i){
+        strcat(originCmd, cmd->argv[i]);
+        strcat(originCmd, " ");
+        counter += strlen(cmd->argv[i]) + 1;
+    }
+    originCmd[counter - 1] = '\0';
+    // printf("unset origin: %s, length: %d\n", originCmd, strlen(originCmd));
+
+    aliasL* curser = aliasList;
+    if (curser){
+        if (strcmp(curser->originCmd, originCmd) == 0){
+            aliasL* tmp = aliasList;
+            aliasList = aliasList->next;
+            free(tmp->originCmd);
+            free(tmp->aliasCmd);
+            free(tmp);
+            free(originCmd);
+            tmp = NULL;
+            return;
+        }
+        while (curser->next){
+            if (strcmp(curser->next->originCmd, originCmd) == 0){
+                aliasL* tmp = curser->next;
+                curser->next = curser->next->next;
+                free(tmp->originCmd);
+                free(tmp->aliasCmd);
+                free(tmp);
+                free(originCmd);
+                tmp = NULL;
+                return;
+            }
+            curser = curser->next;
+        }
+    }
+    printf("%s: command not found\n", originCmd);
+}
+
+void printAlias(){
+    aliasL* curser = aliasList;
+    while (curser){
+        printf("alias %s='%s'\n", curser->aliasCmd, curser->originCmd);
+        curser = curser->next;
+    }
+}
+
+void parseAlias(char* cmdline, char** aliasCmd, char** originCmd){
+    int i = 0;
+    int quotation1 = -1;
+    for (i = 0; i < strlen(cmdline); i++){
+       if (cmdline[i] == '\''){
+               quotation1 = i;
+               break;
+       }
+    }
+    (*aliasCmd) = substring(cmdline, 0, quotation1 - 1);
+    (*originCmd) = substring(cmdline, quotation1 + 2, strlen(cmdline) - quotation1 - 1);
+}
+
+char* substring(char *string, int position, int length)
+{
+    char *pointer;
+    int c;
+
+    pointer = malloc(sizeof(char) * (length+1));
+    if (pointer == NULL){
+        printf("Unable to allocate memory.\n");
+        exit(EXIT_FAILURE);
+    }
+    for (c = 0 ; c < position -1 ; c++)
+        string++;
+    for (c = 0 ; c < length ; c++){
+        *(pointer+c) = *string;
+        string++;
+    }
+    *(pointer+c) = '\0';
+    return pointer;
+}
+
+bool isValidAlias(char* aliasCmd, char* originCmd){
+    char* cpyOriginCmd = malloc(sizeof(char) * strlen(originCmd));
+    strcpy(cpyOriginCmd, originCmd);
+    char* first_world = single_param(cpyOriginCmd);
+    if (strcmp(first_world, aliasCmd) == 0){
+        // printf("Invliadi Alian!\n");
+        free(cpyOriginCmd);
+        return FALSE;
+    } else{
+        // printf("Valid alian!\n");
+        free(cpyOriginCmd);
+        return TRUE;
+    }
 }

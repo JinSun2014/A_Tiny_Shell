@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/types.h>
 #include <unistd.h>
 /************Private include**********************************************/
 #include "interpreter.h"
@@ -42,6 +43,14 @@ typedef struct string_l {
   struct string_l* next;
 } stringL;
 
+
+EXTERN aliasL* aliasList;
+static char** str_split(char*, const char);
+static char* replaceAlias(char*);
+static char* replaceHomeDir(char*);
+
+/****************Function Implementation**************/
+
 /*Parse a single word from the param. Get rid of '"' or '''*/
 char* single_param(char *st)
 {
@@ -56,6 +65,7 @@ char* single_param(char *st)
       if(st[idx] == '<' || st[idx] == '>') {st[idx] = '\0'; return t;}
       if(st[idx] == ' ' && quot1 == 0 && quot2 == 0) {st[idx] = '\0';return t;}
       if(st[idx] == '\'' && quot1 == 1) {st[idx] = '\0';return t;}
+      if(st[idx] == '\'' && quot1 == 0) {quot1 = 1;}
       if(st[idx] == '"' && quot2 == 1) {st[idx] = '\0';return t;}
     }
     else{
@@ -111,7 +121,6 @@ void parser_single(char *c, int sz, commandT** cd, int bg)
     }
   }
   if(c[cmd_length - 1] != ' ') task_argc++;
-  //printf("%d\n",task_argc);
   (*cd) = CreateCmdT(task_argc);
   (*cd) -> bg = bg;
   (*cd)->cmdline = strdup(c);
@@ -136,12 +145,25 @@ void parser_single(char *c, int sz, commandT** cd, int bg)
 /*Parse the whole command line and split commands if a piped command is sent.*/
 void Interpret(char* cmdLine)
 {
-	printf("interpret: %s \n", cmdLine);
   int task = 1;
   int bg = 0, i,k,j = 0, quotation1 = 0, quotation2 = 0;
   commandT **command;
 
   if(cmdLine[0] == '\0') return;
+  // printf("cmdline: %s\n", cmdLine);
+  char* newCmd = NULL;
+  newCmd = replaceAlias(cmdLine);
+  // printf("newCmd: %s\ncmdline: %s\n", newCmd, cmdLine);
+  if (newCmd){
+      // free(cmdLine);
+      cmdLine = newCmd;
+  }
+  // printf("--After:cmdline: %s\n", cmdLine);
+  newCmd = replaceHomeDir(cmdLine);
+  if (newCmd){
+      free(cmdLine);
+      cmdLine = newCmd;
+  }
 
   for(i = 0; i < strlen(cmdLine); i++){
     if(cmdLine[i] == '\''){
@@ -199,16 +221,160 @@ void Interpret(char* cmdLine)
   }
   parser_single(&(cmdLine[i-j]), j, &(command[task]),bg);
 
-  printf("Your command is: ");
-  int curser = 0;
-  char** cmds = command[0]->argv;
-  for (curser = 0; curser < command[0]->argc; ++curser){
-	  printf("%i ", curser);
-      printf("%s ", cmds[curser]);
-  }
-  printf("\n");
+  // printf("Your command is: ");
+  // int curser = 0;
+  // char** cmds = command[0]->argv;
+  // for (curser = 0; curser < command[0]->argc; ++curser){
+      // printf("%i ", curser);
+      // printf("%s ", cmds[curser]);
+  // }
+  // printf("\n");
 
 
   RunCmd(command, task+1);
   free(command);
+}
+
+char** str_split(char* a_str, const char a_delim)
+{
+    char** result    = 0;
+    size_t count     = 0;
+    char* tmp        = a_str;
+    char* last_comma = 0;
+    char delim[2];
+    delim[0] = a_delim;
+    delim[1] = 0;
+
+    /* Count how many elements will be extracted. */
+    while (*tmp)
+    {
+        if (a_delim == *tmp)
+        {
+            count++;
+            last_comma = tmp;
+        }
+        tmp++;
+    }
+
+    /* Add space for trailing token. */
+    count += last_comma < (a_str + strlen(a_str) - 1);
+
+    /* Add space for terminating null string so caller
+       knows where the list of returned strings ends. */
+    count++;
+
+    result = malloc(sizeof(char*) * count);
+
+    if (result)
+    {
+        size_t idx  = 0;
+        char* token = strtok(a_str, delim);
+
+        while (token)
+        {
+            // assert(idx < count);
+            *(result + idx++) = strdup(token);
+            token = strtok(0, delim);
+        }
+        // assert(idx == count - 1);
+        *(result + idx) = 0;
+    }
+
+    return result;
+}
+
+char* replaceAlias(char* cmdline){
+    int oldLength = strlen(cmdline);
+    char* oldCmd = malloc(sizeof(char) * oldLength + 1);
+    strcpy(oldCmd, cmdline);
+
+    char** tokens = str_split(cmdline, ' ');
+    /* check and replace all alias */
+    oldCmd[oldLength] = '\0';
+    int newLength = 0;
+    bool hasAlias = FALSE;
+    if (tokens){
+        int i = 0;
+        aliasL* curser = aliasList;
+        for (; *(tokens + i); i++){
+            curser = aliasList;
+            while (curser){
+                if (strcmp(curser->aliasCmd, *(tokens + i)) == 0){
+                    free(*(tokens + i));
+                    *(tokens + i) = curser->originCmd;
+                    // printf("*****Changed: %s\n", *(tokens + i));
+                    hasAlias = TRUE;
+                }
+                newLength += strlen(*(tokens + i));
+                newLength++;
+                curser = curser->next;
+            }
+        }
+    }
+
+    char* newCmd;
+    if(hasAlias){
+        // printf("newLength: %d\n", newLength);
+        newCmd = malloc(sizeof(char) * (newLength + 1));
+
+        newCmd[0] = '\0';
+        int i = 0;
+        // printf("***Scan Tokens:\n");
+        // for (; *(tokens + i); i++){
+            // printf("%s %d\n", *(tokens + i), i);
+        // }
+
+        i = 0;
+        for (; *(tokens + i); i++){
+            strcat(newCmd, *(tokens + i));
+            strcat(newCmd, " ");
+        }
+        newCmd[newLength] = '\0';
+
+        for (; *(tokens + i); i++){
+            free(*(tokens + i));
+        }
+        // printf("In function: newCmd: %s\n", newCmd);
+        return newCmd;
+    }
+    else{
+        int i = 0;
+        for (; *(tokens + i); i++){
+            free(*(tokens + i));
+        }
+        return oldCmd;
+    }
+}
+
+char* replaceHomeDir(char* cmdline){
+    int i = 0;
+    const char *homedir = getenv("HOME");
+    bool hasTelta = FALSE;
+    for (i = 0; i != strlen(cmdline); ++i){
+        if (cmdline[i] == '~'){
+            hasTelta = TRUE;
+            break;
+        }
+    }
+    if (hasTelta){
+        char* newCmd = malloc(sizeof(char) * 50);
+        newCmd[0] = '\0';
+        i = 0;
+        int counter = 0;
+        while(cmdline[i]){
+            if (cmdline[i] == '~'){
+                i++;
+                strcat(newCmd, homedir);
+                counter += strlen(homedir);
+            } else {
+                newCmd[counter] = cmdline[i];
+                i++;
+                counter++;
+            }
+        }
+        return newCmd;
+    }
+    else{
+        return NULL;
+    }
 }

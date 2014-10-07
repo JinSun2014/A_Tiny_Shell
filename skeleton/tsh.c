@@ -54,22 +54,27 @@
 #define MAXPATH 80
 /************Global Variables*********************************************/
 
-/************Function Prototypes******************************************/
-/* handles SIGINT and SIGSTOP signals */
+/************External Declaration*****************************************/
+extern aliasL* aliasList;
 extern int fgChild;
 extern char* fgCmd_first;
+extern bgjobL* bgjobs;
+
+extern void printBgJobList();
+extern void AddBgJob(bgjobL* job);
+extern void printAlias();
+extern pid_t waitpid(pid_t pid, int* status, int options);
+
+/************Function Prototypes******************************************/
+/* handles SIGINT and SIGSTOP signals */
+int getJobId();
 static void sig(int);
 static void sigHandler(int);
 void printPrompt();
-extern pid_t waitpid(pid_t pid, int* status, int options);
-extern bgjobL* bgjobs;
 void changeStatus(pid_t id, state newStatus);
-int getJobId();
-extern void printBgJobList();
-extern void AddBgJob(bgjobL* job);
-/************External Declaration*****************************************/
+void releaseAlias(aliasL*);
 
-/**************Implementation***********************************************/
+/**************Implementation*********************************************/
 
 int main (int argc, char *argv[])
 {
@@ -82,13 +87,11 @@ int main (int argc, char *argv[])
   if (signal(SIGCONT, sig) == SIG_ERR) PrintPError("SIGCONT");
   if (signal(SIGCHLD, sigHandler) == SIG_ERR) PrintPError("SIGCHLD");
 
-
   while (!forceExit) /* repeat forever */
   {
 	printPrompt();
     /* read command line */
     getCommandLine(&cmdLine, BUFSIZE);
-//	printf("cmdLine: %s", cmdLine);
 
 	// strcmp: string compare
     if(strcmp(cmdLine, "exit") == 0)
@@ -96,7 +99,6 @@ int main (int argc, char *argv[])
       forceExit=TRUE;
       continue;
     }
-    // if (signal(SIGINT, sig) == SIG_ERR) PrintPError("SIGINT");
 
     /* checks the status of background jobs */
     CheckJobs();
@@ -109,6 +111,11 @@ int main (int argc, char *argv[])
 
   /* shell termination */
   free(cmdLine);
+  releaseAlias(aliasList);
+  /* print all lists and check 
+  printf("\n\n ---------TERMINATE SHELL--------\n");
+  printf("Alias:\n");
+  printAlias();*/
   return 0;
 } /* end main */
 
@@ -117,10 +124,14 @@ static void sig(int signo)
 	switch (signo)
 	{
 		case SIGINT:
-			printf("SIGINT \n");
+			if (fgChild)
+			{
+				kill(fgChild, SIGINT);
+			}
+			fgChild = 0;
 			break;
+		// handle ctrl-z signal
 		case SIGTSTP:
-			printf("SIGTSTP \n");
 			if (fgChild)
 			{
 				kill(-fgChild, SIGTSTP);
@@ -130,22 +141,20 @@ static void sig(int signo)
 				newBgJob->status = STOPPED;
 				newBgJob->jobId = getJobId() + 1;
 				AddBgJob(newBgJob);
-				printf("[%d]   %s             %s\n",newBgJob-> jobId, "STOPPED", fgCmd_first);
+				printf("[%d]   %s             %s\n",newBgJob-> jobId, "Stopped", fgCmd_first);
 				fgChild = 0;
 				fgCmd_first = NULL;
-				printBgJobList();
 			}
 			break;
 		case SIGCONT:
-			printf("SIGCONT \n");
 			break;
 	}
+	fflush(stdout);
 }
 
 // used to handler terminated process in background
 static void sigHandler(int signo)
 {
-	printf("SIGCHLD \n");
 	pid_t pid;
 	int status;
 	pid = waitpid(-1, &status, WNOHANG|WUNTRACED);
@@ -159,8 +168,6 @@ static void sigHandler(int signo)
 	{
 		return;
 	}
-	printf("status: %d \n", status);
-	printf("sigHandler pid: %d \n", pid);
 	// handle fg jobs
 	if (pid == fgChild)
 	{
@@ -170,18 +177,19 @@ static void sigHandler(int signo)
 	changeStatus(pid, DONE);
 }
 
+// prompt of the shell
 void printPrompt()
 {
 	// get current directory path
-	char buffer[MAXPATH];
-	char* result = getcwd(buffer, MAXPATH);
+	//char buffer[MAXPATH];
+	//char* result = getcwd(buffer, MAXPATH);
 	//substr(result, buffer, 13, strlen(buffer));
-	printf("%s$> ", result);
+	//printf("%s$> ", result);
 }
 
+// change the status of specific job
 void changeStatus(pid_t id, state newStatus)
 {
-	printf("changeStatus id: %d \n", id);
 	if (bgjobs == NULL || bgjobs->next == NULL)
 	{
 		return;
@@ -199,6 +207,7 @@ void changeStatus(pid_t id, state newStatus)
 	}
 }
 
+// get current amount of jobId
 int getJobId()
 {
 	int total = 0;
@@ -216,4 +225,17 @@ int getJobId()
 		}
 		return total;
 	}
+}
+
+void releaseAlias(aliasL* aliasList){
+    aliasL* curser = aliasList;
+    while (aliasList != NULL){
+        curser = aliasList;
+        aliasList = aliasList->next;
+        curser->next = NULL;
+        if (curser->originCmd != NULL)  free(curser->originCmd);
+        if (curser->aliasCmd != NULL)   free(curser->aliasCmd);
+        free(curser);
+    }
+    aliasList = NULL;
 }
