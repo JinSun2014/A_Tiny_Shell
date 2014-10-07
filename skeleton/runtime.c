@@ -584,6 +584,7 @@ void setAlias(commandT* cmd){
 
     parseAlias(cmd->argv[1], &aliasCmd, &originCmd);
     int i;
+    /* get rid of trailing space */
     for (i = strlen(originCmd) - 1; originCmd[i] == ' '; --i){
         originCmd[i] = '\0';
     }
@@ -593,11 +594,13 @@ void setAlias(commandT* cmd){
     if (!isValidAlias(aliasCmd, originCmd)){
         return;
     }
+    /* insert alias by alphabet order */
     if (aliasList == NULL){
         aliasList = (aliasL*) malloc(sizeof(aliasL));
         aliasList->aliasCmd = aliasCmd;
         aliasList->originCmd = originCmd;
         aliasList->next = NULL;
+        return;
     } else {
         aliasL* curser = aliasList;
         if (strcmp(curser->aliasCmd, aliasCmd) == 0){
@@ -606,12 +609,33 @@ void setAlias(commandT* cmd){
             free(aliasCmd);
             return;
         }
-        while (curser->next != NULL && strcmp(curser->next->aliasCmd, aliasCmd) != 0)
+        if (curser->aliasCmd[0] > aliasCmd[0]){
+            aliasL* newAlias = (aliasL*) malloc(sizeof(aliasL));
+            newAlias->aliasCmd = aliasCmd;
+            newAlias->originCmd = originCmd;
+            newAlias->next = curser;
+            aliasList = newAlias;
+            newAlias = NULL;
+            return;
+        }
+        while (curser->next != NULL && strcmp(curser->next->aliasCmd, aliasCmd) != 0 && curser->next->aliasCmd[0] <= aliasCmd[0])
             curser = curser->next;
         if (curser->next != NULL){
-            free(curser->next->originCmd);
-            curser->next->originCmd = originCmd;
-            free(aliasCmd);
+            if (curser->next->aliasCmd[0] > aliasCmd[0]){
+                aliasL* newAlias = (aliasL*) malloc(sizeof(aliasL));
+                newAlias->next = curser->next;
+                newAlias->aliasCmd = aliasCmd;
+                newAlias->originCmd = originCmd;
+                curser->next = newAlias;
+                newAlias = NULL;
+                return;
+            }
+            else{
+                free(curser->next->originCmd);
+                curser->next->originCmd = originCmd;
+                free(aliasCmd);
+                return;
+            }
         }
         else{
             aliasL* newAlias = (aliasL*) malloc(sizeof(aliasL));
@@ -620,6 +644,7 @@ void setAlias(commandT* cmd){
             newAlias->next = NULL;
             curser->next = newAlias;
             newAlias = NULL;
+            return;
         }
     }
 }

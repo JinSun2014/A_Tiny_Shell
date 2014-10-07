@@ -348,23 +348,29 @@ char* replaceAlias(char* cmdline){
 
 char* replaceHomeDir(char* cmdline){
     int i = 0;
-    // struct passwd *pw = getpwuid(getuid());
     const char *homedir = getenv("HOME");
     bool hasTelta = FALSE;
     for (i = 0; i != strlen(cmdline); ++i){
         if (cmdline[i] == '~'){
             hasTelta = TRUE;
+            break;
         }
     }
     if (hasTelta){
         char* newCmd = malloc(sizeof(char) * 50);
         newCmd[0] = '\0';
-        char** tokens = str_split(cmdline, '~');
         i = 0;
-        for (; *(tokens + i); ++i){
-            strcat(newCmd, *(tokens + i));
-            if (!*(tokens + i + 1))
+        int counter = 0;
+        while(cmdline[i]){
+            if (cmdline[i] == '~'){
+                i++;
                 strcat(newCmd, homedir);
+                counter += strlen(homedir);
+            } else {
+                newCmd[counter] = cmdline[i];
+                i++;
+                counter++;
+            }
         }
         return newCmd;
     }
