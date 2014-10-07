@@ -618,7 +618,17 @@ void setAlias(commandT* cmd){
 }
 
 void unsetAlias(commandT* cmd){
-    char *originCmd = cmd->argv[1];
+    char *originCmd = malloc(sizeof(char) * 50);
+    originCmd[0] = '\0';
+    int counter = 0;
+    int i;
+    for (i = 1; i != cmd->argc; ++i){
+        strcat(originCmd, cmd->argv[i]);
+        strcat(originCmd, " ");
+        counter += strlen(cmd->argv[i]) + 1;
+    }
+    originCmd[counter - 1] = '\0';
+    // printf("unset origin: %s, length: %d\n", originCmd, strlen(originCmd));
 
     aliasL* curser = aliasList;
     if (curser){
