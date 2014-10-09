@@ -97,6 +97,8 @@ void printAlias();
 static void parseAlias(char*, char**, char**);
 /* check if valid Alias */
 static bool isValidAlias(char*, char*);
+/* print command */
+void printCmd(commandT*);
 /************External Declaration*****************************************/
 EXTERN char* single_param(char*);
 
@@ -155,6 +157,51 @@ void RunCmdBg(commandT* cmd)
 
 void RunCmdPipe(commandT* cmd1, commandT* cmd2)
 {
+    // printf("------ PIPE MODE ------\n");
+    // printCmd(cmd1);
+    // printCmd(cmd2);
+    // printf("\n");
+
+    int fd[2];
+    pid_t pid;
+    int status;
+    // char readbuffer[80];
+    // char writebuffer[80];
+    if (pipe(fd) == -1){
+        perror("Error pipe\n");
+        exit(1);
+    }
+    if ((pid = fork()) == -1){
+        perror("Error fork\n");
+        exit(1);
+    }
+    if (pid == 0){
+        setpgid(0, 0);
+        int childpid = fork();
+        if (childpid < 0){
+            perror("Error fork\n");
+            exit(1);
+        }
+        if (childpid == 0){
+            /* close reading, open writing*/
+            close(fd[0]);
+            close(1);
+            dup(fd[1]);
+            ResolveExternalCmd(cmd1);
+            execv(cmd1->name, cmd1->argv);
+            exit(0);
+        }
+        else{
+            close(fd[1]);
+            close(0);
+            dup(fd[0]);
+            ResolveExternalCmd(cmd2);
+            execv(cmd2->name, cmd2->argv);
+            exit(0);
+        }
+    }
+    else{
+    }
 }
 
 // 0: standard input
@@ -173,6 +220,7 @@ void RunCmdRedirOut(commandT* cmd, char* file)
 	RunCmdFork(cmd, TRUE);
 	close(fileOut);
 	dup2(output, 1);
+    close(output);
 }
 
 // "<"
@@ -803,4 +851,13 @@ bool isValidAlias(char* aliasCmd, char* originCmd){
         free(cpyOriginCmd);
         return TRUE;
     }
+}
+
+void printCmd(commandT* cmd){
+    printf("Command: name: %s,\tcmdline: %s\n\targc: %d,\targv: ", cmd->name, cmd->cmdline, cmd->argc);
+    int i = 0;
+    for (; i != cmd->argc; ++i){
+        printf("%s ", cmd->argv[i]);
+    }
+    printf("\n");
 }
