@@ -81,6 +81,8 @@ static void Exec(commandT*, bool);
 static void RunBuiltInCmd(commandT*);
 /* checks whether a command is a builtin command */
 static bool IsBuiltIn(char*);
+/* run command which has redir in and out together  */
+static void RedirInOut(commandT**);
 /************External Declaration*****************************************/
 
 /**************Implementation***********************************************/
@@ -89,9 +91,25 @@ void RunCmd(commandT** cmd, int n)
 {
   int i;
   total_task = n;
- // printf("total_task: %d \n", n);
   if(n == 1)
+  {
+	if (cmd[0]->is_redirect_in && cmd[0]->is_redirect_out)
+	{
+		RedirInOut(cmd);
+	}
+	else if (cmd[0]->is_redirect_in)
+	{
+	  RunCmdRedirIn(cmd[0], cmd[0]->redirect_in);
+    }
+	else if (cmd[0]->is_redirect_out)
+    {
+	  RunCmdRedirOut(cmd[0], cmd[0]->redirect_out);
+    }
+	else
+	{
     RunCmdFork(cmd[0], TRUE);
+	}
+  }
   else{
     RunCmdPipe(cmd[0], cmd[1]);
     for(i = 0; i < n; i++)
@@ -126,12 +144,52 @@ void RunCmdPipe(commandT* cmd1, commandT* cmd2)
 {
 }
 
+// 0: standard input
+// 1: standard output
+// 2: standard error
+// ">"
 void RunCmdRedirOut(commandT* cmd, char* file)
 {
+	int output = dup(1);
+	int fileOut = open(file, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+	if (fileOut == -1)
+	{
+		return;
+	}
+	dup2(fileOut, 1);
+	RunCmdFork(cmd, TRUE);
+	close(fileOut);
+	dup2(output, 1);
 }
 
+// "<"
 void RunCmdRedirIn(commandT* cmd, char* file)
 {
+	int input = dup(0);
+	int fileIn = open(file, O_RDONLY);
+	if (fileIn == -1)
+	{
+		return;
+	}
+	dup2(fileIn, 0);
+	close(fileIn);
+	RunCmdFork(cmd, TRUE);
+	dup2(input, 0);
+}
+
+void RedirInOut(commandT** cmd)
+{
+	int input = dup(0);
+	int output = dup(1);
+	int fileIn = open(cmd[0]->redirect_in, O_RDONLY);
+	int fileOut =  open(cmd[0]->redirect_out, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+	dup2(fileIn, 0);
+	dup2(fileOut, 1);
+	RunCmdFork(cmd[0], TRUE);
+	dup2(input, 0);
+	dup2(output, 1);
+	close(fileIn);
+	close(fileOut);
 }
 
 
@@ -279,7 +337,7 @@ static void Exec(commandT* cmd, bool forceFork)
 	}
 	if (pid == 0)
 	{
-		//setpgid(0, 0);
+		setpgid(0, 0);
 		//printf("i am child. \n");
 		execv(cmd->name, cmd->argv);
 		exit(0);
