@@ -18,7 +18,7 @@
 ###############################################################################
 
 # handin info
-TEAM = JinSun_YuchaoZhou
+TEAM = jsy833_yzr736
 VERSION = `date +%Y%m%d%H%M%S`
 PROJ = tsh
 
