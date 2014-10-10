@@ -163,7 +163,7 @@ void RunCmdPipe(commandT* cmd1, commandT* cmd2)
     // printf("\n");
 
     int fd[2];
-    pid_t pid;
+    pid_t child1, child2;
     int status;
     // char readbuffer[80];
     // char writebuffer[80];
@@ -171,36 +171,38 @@ void RunCmdPipe(commandT* cmd1, commandT* cmd2)
         perror("Error pipe\n");
         exit(1);
     }
-    if ((pid = fork()) == -1){
+    if ((child1 = fork()) == -1){
         perror("Error fork\n");
         exit(1);
     }
-    if (pid == 0){
+    if (child1 == 0){
         setpgid(0, 0);
-        int childpid = fork();
-        if (childpid < 0){
+        close(fd[0]);
+        dup2(fd[1], 1);
+        close(fd[1]);
+        RunCmdFork(cmd1, FALSE);
+        exit(0);
+    }
+    else{
+        child2 = fork();
+        if (child2 < 0){
             perror("Error fork\n");
             exit(1);
         }
-        if (childpid == 0){
+        if (child2 == 0){
             /* close reading, open writing*/
+            close(fd[1]);
+            dup2(fd[0], 0);
             close(fd[0]);
-            close(1);
-            dup(fd[1]);
-            ResolveExternalCmd(cmd1);
-            execv(cmd1->name, cmd1->argv);
+            RunCmdFork(cmd2, FALSE);
             exit(0);
         }
         else{
             close(fd[1]);
-            close(0);
-            dup(fd[0]);
-            ResolveExternalCmd(cmd2);
-            execv(cmd2->name, cmd2->argv);
-            exit(0);
+            close(fd[0]);
+            waitpid(child1, &status, 0);
+            waitpid(child2, &status, 0);
         }
-    }
-    else{
     }
 }
 
@@ -381,61 +383,63 @@ void printBgJobList()
 // fg wait; bg not wait
 static void Exec(commandT* cmd, bool forceFork)
 {
-	if (forceFork)
-	{
+    if (forceFork)
+    {
 
-	//printf("cmd[0]->argv %s \n" + cmd[0]->argv);
-	//printf("cmdline: %s \n", cmd->cmdline);
-	//printf("redirect_in: %s , redirect_out: %s \n", cmd->redirect_in, cmd->redirect_out);
-	//printf("bg: %i  ", cmd->bg);
-	//printf("argc: %i \n ", cmd->argc);
-	pid_t pid;
-	pid = fork();
-	if (pid < 0)
-	{
-		printf("pid < 0 \n ");
-		return;
-	}
-	if (pid == 0)
-	{
-		setpgid(0, 0);
-		//printf("i am child. \n");
-		execv(cmd->name, cmd->argv);
-		exit(0);
-	}
-	else // prent process
-	{
-		//printf("i am parent. \n");
-		// fg job
-		if (cmd->bg == 0)
-		{
-			fgChild = pid;
-			fgCmd_first = cmd->cmdline;
-			//printf("this is not bg job.\n");
-			//printf("pid: %d \n", fgChild);
-		//	waitpid(pid, &status, 0);
+        //printf("cmd[0]->argv %s \n" + cmd[0]->argv);
+        //printf("cmdline: %s \n", cmd->cmdline);
+        //printf("redirect_in: %s , redirect_out: %s \n", cmd->redirect_in, cmd->redirect_out);
+        //printf("bg: %i  ", cmd->bg);
+        //printf("argc: %i \n ", cmd->argc);
+        pid_t pid;
+        pid = fork();
+        if (pid < 0)
+        {
+            printf("pid < 0 \n ");
+            return;
+        }
+        if (pid == 0)
+        {
+            setpgid(0, 0);
+            //printf("i am child. \n");
+            execv(cmd->name, cmd->argv);
+            exit(0);
+        }
+        else // prent process
+        {
+            //printf("i am parent. \n");
+            // fg job
+            if (cmd->bg == 0)
+            {
+                fgChild = pid;
+                fgCmd_first = cmd->cmdline;
+                //printf("this is not bg job.\n");
+                //printf("pid: %d \n", fgChild);
+                //	waitpid(pid, &status, 0);
 
-			while(fgChild > 0)
-			{
-				sleep(1);
-			}
-		}
-		else // bg job
-		{
-			//printf("this is bg job. \n");
-			bgjobL* bgJob = (bgjobL*) malloc(sizeof(bgjobL));
-			bgJob->pid = pid;
-			bgJob->status = RUNNING;
-			bgJob->cmd_first = cmd->cmdline;
-			//printf("bg job pid: %d \n", bgJob->pid);
-			bgJob->next = NULL;
-			AddBgJob(bgJob);
-			//printBgJobList();
-			return;
-		}
-	}
-	}
-	//printBgJobList();
+                while(fgChild > 0)
+                {
+                    sleep(1);
+                }
+            }
+            else // bg job
+            {
+                //printf("this is bg job. \n");
+                bgjobL* bgJob = (bgjobL*) malloc(sizeof(bgjobL));
+                bgJob->pid = pid;
+                bgJob->status = RUNNING;
+                bgJob->cmd_first = cmd->cmdline;
+                //printf("bg job pid: %d \n", bgJob->pid);
+                bgJob->next = NULL;
+                AddBgJob(bgJob);
+                //printBgJobList();
+                return;
+            }
+        }
+    }
+    else{
+        execv(cmd->name, cmd->argv);
+    }
 }
 
 static bool IsBuiltIn(char* cmd)
