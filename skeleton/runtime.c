@@ -99,6 +99,8 @@ static void parseAlias(char*, char**, char**);
 static bool isValidAlias(char*, char*);
 /* print command */
 void printCmd(commandT*);
+/* run multiple pipes */
+void RunMultiPipe(commandT**, int);
 /************External Declaration*****************************************/
 EXTERN char* single_param(char*);
 
@@ -128,7 +130,8 @@ void RunCmd(commandT** cmd, int n)
 	}
   }
   else{
-    RunCmdPipe(cmd[0], cmd[1]);
+    // RunCmdPipe(cmd[0], cmd[1]);
+    RunMultiPipe(cmd, n);
     for(i = 0; i < n; i++)
       ReleaseCmdT(&cmd[i]);
   }
@@ -864,4 +867,28 @@ void printCmd(commandT* cmd){
         printf("%s ", cmd->argv[i]);
     }
     printf("\n");
+}
+
+void RunMultiPipe(commandT** cmd, int n){
+    int i, status;
+    pid_t pid = fork();
+    if (!pid){
+        for (i = 0; i < n - 1; i++){
+            int fd[2];
+            pipe(fd);
+
+            if (!fork()){
+                dup2(fd[1], 1);
+                RunCmdFork(cmd[i], FALSE);
+                perror("MultiPipe error\n");
+            }
+            dup2(fd[0], 0);
+            close(fd[1]);
+        }
+
+        RunCmdFork(cmd[i], FALSE);
+    }
+    else{
+        waitpid(pid, &status, 0);
+    }
 }
