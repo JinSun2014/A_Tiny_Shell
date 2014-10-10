@@ -875,8 +875,8 @@ void RunMultiPipe(commandT** cmd, int n){
     if (!pid){
         for (i = 0; i < n - 1; i++){
             int fd[2];
-            pipe(fd);
-
+           if ( pipe(fd) == -1)
+			   return;
             if (!fork()){
                 dup2(fd[1], 1);
                 RunCmdFork(cmd[i], FALSE);
